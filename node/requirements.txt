@@ -1,0 +1,6 @@
+requests
+opencv-python
+# optional, for --mode yolo (pulls in PyTorch, ~1 GB):
+# ultralytics
+# optional, for --mqtt:
+# paho-mqtt

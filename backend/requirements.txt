@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+shapely>=2.0
+networkx
+numpy
+requests
+tzdata
+# optional: paho-mqtt (LUMEN_MQTT=host to bridge MQTT readings)

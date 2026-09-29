@@ -1,0 +1,2644 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-09-29T07:31:21Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 4759021,
+  "bounds": {
+    "minlat": -37.8300859,
+    "minlon": 144.9878467,
+    "maxlat": -37.8292852,
+    "maxlon": 144.9879804
+  },
+  "nodes": [
+    30385499,
+    354792260,
+    7957743956
+  ],
+  "geometry": [
+    { "lat": -37.8292852, "lon": 144.9879804 },
+    { "lat": -37.8296375, "lon": 144.9879237 },
+    { "lat": -37.8300859, "lon": 144.9878467 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "bridge": "yes",
+    "bridge:name": "Hoddle Bridge",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "5",
+    "lanes:backward": "2",
+    "lanes:forward": "3",
+    "layer": "1",
+    "lit": "yes",
+    "maxspeed": "60",
+    "maxweight:signed": "no",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "ref": "29",
+    "sidewalk": "both",
+    "surface": "asphalt",
+    "turn:lanes:forward": "left|through|through",
+    "wikidata": "Q5875976"
+  }
+},
+{
+  "type": "way",
+  "id": 4759025,
+  "bounds": {
+    "minlat": -37.8309369,
+    "minlon": 144.9875394,
+    "maxlat": -37.8284669,
+    "maxlon": 144.9897605
+  },
+  "nodes": [
+    30385518,
+    1525908934,
+    1525908973,
+    1525908957,
+    1525908967,
+    1525908938,
+    1525908953,
+    267315333
+  ],
+  "geometry": [
+    { "lat": -37.8309369, "lon": 144.9897605 },
+    { "lat": -37.8303576, "lon": 144.9891656 },
+    { "lat": -37.8298896, "lon": 144.9887051 },
+    { "lat": -37.8296338, "lon": 144.9884702 },
+    { "lat": -37.8293412, "lon": 144.9882179 },
+    { "lat": -37.8290562, "lon": 144.9879915 },
+    { "lat": -37.8288142, "lon": 144.9877973 },
+    { "lat": -37.8284669, "lon": 144.9875394 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "highway": "motorway",
+    "lanes": "4",
+    "layer": "2",
+    "lit": "yes",
+    "loc_name": "Monash Freeway",
+    "maxspeed": "80",
+    "name": "CityLink",
+    "name:bridge": "Morshead Overpass",
+    "network": "AU:VIC",
+    "oneway": "yes",
+    "ref": "M1",
+    "surface": "asphalt",
+    "toll": "yes",
+    "turn:lanes": "slight_left;through|through|through|through",
+    "website": "https://www.citylink.com.au/"
+  }
+},
+{
+  "type": "way",
+  "id": 5711127,
+  "bounds": {
+    "minlat": -37.8280088,
+    "minlon": 144.9866438,
+    "maxlat": -37.8274358,
+    "maxlon": 144.9871729
+  },
+  "nodes": [
+    30385525,
+    1525908945,
+    1525908943,
+    8992584123,
+    441990607
+  ],
+  "geometry": [
+    { "lat": -37.8280088, "lon": 144.9871729 },
+    { "lat": -37.8278554, "lon": 144.9870438 },
+    { "lat": -37.8276329, "lon": 144.9868437 },
+    { "lat": -37.8275393, "lon": 144.9867523 },
+    { "lat": -37.8274358, "lon": 144.9866438 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "destination": "Kings Way;West Gate Bridge",
+    "highway": "motorway",
+    "lanes": "4",
+    "loc_name": "Monash Freeway",
+    "maxspeed": "80",
+    "name": "CityLink",
+    "network": "AU:VIC",
+    "oneway": "yes",
+    "ref": "M1",
+    "surface": "asphalt",
+    "toll": "yes",
+    "turn:lanes": "slight_left|through|through|through",
+    "website": "https://www.citylink.com.au/"
+  }
+},
+{
+  "type": "way",
+  "id": 8066124,
+  "bounds": {
+    "minlat": -37.8299609,
+    "minlon": 144.9680860,
+    "maxlat": -37.8242434,
+    "maxlon": 145.0039714
+  },
+  "nodes": [
+    60317211,
+    60317133,
+    573782217,
+    3401025342,
+    60317134,
+    3401025343,
+    60317135,
+    60317136,
+    60317137,
+    60317138,
+    1793104535,
+    60317139,
+    1793104533,
+    60317140,
+    2151553130,
+    1793104534,
+    60317141,
+    576856372,
+    2151553768,
+    3204024043,
+    60317142,
+    3204024044,
+    60317143,
+    3123761075,
+    2385138109,
+    2385138110,
+    11104254365,
+    60317144,
+    3123761073,
+    60317145,
+    60317146,
+    60317147,
+    3123761074,
+    60317148,
+    60317149,
+    277106950,
+    60317150,
+    27123811
+  ],
+  "geometry": [
+    { "lat": -37.8258009, "lon": 144.9680860 },
+    { "lat": -37.8254703, "lon": 144.9690607 },
+    { "lat": -37.8251928, "lon": 144.9699349 },
+    { "lat": -37.8250291, "lon": 144.9704975 },
+    { "lat": -37.8248067, "lon": 144.9712397 },
+    { "lat": -37.8246026, "lon": 144.9720952 },
+    { "lat": -37.8244305, "lon": 144.9730519 },
+    { "lat": -37.8242915, "lon": 144.9744176 },
+    { "lat": -37.8242434, "lon": 144.9753081 },
+    { "lat": -37.8242814, "lon": 144.9777644 },
+    { "lat": -37.8243107, "lon": 144.9790497 },
+    { "lat": -37.8243327, "lon": 144.9802984 },
+    { "lat": -37.8244086, "lon": 144.9820040 },
+    { "lat": -37.8245638, "lon": 144.9843372 },
+    { "lat": -37.8246102, "lon": 144.9852662 },
+    { "lat": -37.8247017, "lon": 144.9864700 },
+    { "lat": -37.8248108, "lon": 144.9878577 },
+    { "lat": -37.8248685, "lon": 144.9888627 },
+    { "lat": -37.8249343, "lon": 144.9897567 },
+    { "lat": -37.8250200, "lon": 144.9904892 },
+    { "lat": -37.8251436, "lon": 144.9913124 },
+    { "lat": -37.8253034, "lon": 144.9921090 },
+    { "lat": -37.8256777, "lon": 144.9933323 },
+    { "lat": -37.8259751, "lon": 144.9941284 },
+    { "lat": -37.8264009, "lon": 144.9949806 },
+    { "lat": -37.8267432, "lon": 144.9956204 },
+    { "lat": -37.8274202, "lon": 144.9967983 },
+    { "lat": -37.8275354, "lon": 144.9970006 },
+    { "lat": -37.8279363, "lon": 144.9976933 },
+    { "lat": -37.8282185, "lon": 144.9982158 },
+    { "lat": -37.8285499, "lon": 144.9989615 },
+    { "lat": -37.8288075, "lon": 144.9996696 },
+    { "lat": -37.8290040, "lon": 145.0002590 },
+    { "lat": -37.8292253, "lon": 145.0010471 },
+    { "lat": -37.8293913, "lon": 145.0017554 },
+    { "lat": -37.8295043, "lon": 145.0022079 },
+    { "lat": -37.8297709, "lon": 145.0032301 },
+    { "lat": -37.8299609, "lon": 145.0039714 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "cycleway": "no",
+    "cycleway:both": "no",
+    "hazmat": "no",
+    "highway": "motorway",
+    "lanes": "3",
+    "layer": "-3",
+    "location": "underground",
+    "maxheight": "4.6 m",
+    "maxspeed": "80",
+    "name": "CityLink",
+    "network": "AU:VIC",
+    "oneway": "yes",
+    "operator": "Transurban",
+    "ref": "M1",
+    "shoulder": "no",
+    "source:tunnel:name": "Vicmap.Transport:services.land.vic.gov.au",
+    "surface": "asphalt",
+    "toll": "yes",
+    "tunnel": "yes",
+    "tunnel:name": "Burnley Tunnel",
+    "website": "https://www.citylink.com.au/",
+    "wikidata": "Q5000022",
+    "wikipedia": "en:Burnley Tunnel"
+  }
+},
+{
+  "type": "way",
+  "id": 27128331,
+  "bounds": {
+    "minlat": -37.8339066,
+    "minlon": 144.9897605,
+    "maxlat": -37.8309369,
+    "maxlon": 145.0013269
+  },
+  "nodes": [
+    297640825,
+    12435161822,
+    297640845,
+    12435161821,
+    12435161820,
+    297640844,
+    297640843,
+    679632579,
+    679633021,
+    297640811,
+    12435161819,
+    12435161818,
+    297640842,
+    297640841,
+    12435161817,
+    679633023,
+    679633024,
+    12435161816,
+    297640840,
+    297640807,
+    12435161815,
+    679633026,
+    297640806,
+    12435161814,
+    297640805,
+    12435161813,
+    679633028,
+    297640804,
+    9162272371,
+    679633029,
+    12435161812,
+    297640803,
+    12435161811,
+    297640839,
+    679633030,
+    679633032,
+    12435161810,
+    297640801,
+    12435161809,
+    679633034,
+    297640800,
+    679633037,
+    297640799,
+    679633038,
+    297640838,
+    679633040,
+    297640837,
+    679633041,
+    30385518
+  ],
+  "geometry": [
+    { "lat": -37.8326814, "lon": 145.0013269 },
+    { "lat": -37.8327421, "lon": 145.0012070 },
+    { "lat": -37.8328296, "lon": 145.0010254 },
+    { "lat": -37.8329161, "lon": 145.0008416 },
+    { "lat": -37.8329906, "lon": 145.0006593 },
+    { "lat": -37.8330681, "lon": 145.0004703 },
+    { "lat": -37.8331384, "lon": 145.0002824 },
+    { "lat": -37.8332604, "lon": 144.9999439 },
+    { "lat": -37.8334967, "lon": 144.9992122 },
+    { "lat": -37.8336482, "lon": 144.9987010 },
+    { "lat": -37.8337330, "lon": 144.9984069 },
+    { "lat": -37.8337878, "lon": 144.9981908 },
+    { "lat": -37.8338223, "lon": 144.9980164 },
+    { "lat": -37.8338526, "lon": 144.9978561 },
+    { "lat": -37.8338731, "lon": 144.9976938 },
+    { "lat": -37.8338908, "lon": 144.9975177 },
+    { "lat": -37.8339024, "lon": 144.9973359 },
+    { "lat": -37.8339066, "lon": 144.9971501 },
+    { "lat": -37.8339043, "lon": 144.9969712 },
+    { "lat": -37.8338937, "lon": 144.9967761 },
+    { "lat": -37.8338711, "lon": 144.9965596 },
+    { "lat": -37.8338522, "lon": 144.9963993 },
+    { "lat": -37.8338267, "lon": 144.9962470 },
+    { "lat": -37.8337944, "lon": 144.9960836 },
+    { "lat": -37.8337549, "lon": 144.9959179 },
+    { "lat": -37.8337056, "lon": 144.9957460 },
+    { "lat": -37.8336508, "lon": 144.9955625 },
+    { "lat": -37.8335696, "lon": 144.9953002 },
+    { "lat": -37.8334680, "lon": 144.9949815 },
+    { "lat": -37.8334492, "lon": 144.9949185 },
+    { "lat": -37.8333921, "lon": 144.9947304 },
+    { "lat": -37.8333157, "lon": 144.9944769 },
+    { "lat": -37.8332481, "lon": 144.9942345 },
+    { "lat": -37.8331829, "lon": 144.9939951 },
+    { "lat": -37.8331251, "lon": 144.9937676 },
+    { "lat": -37.8330675, "lon": 144.9935297 },
+    { "lat": -37.8330230, "lon": 144.9933395 },
+    { "lat": -37.8329797, "lon": 144.9931402 },
+    { "lat": -37.8329225, "lon": 144.9928810 },
+    { "lat": -37.8328796, "lon": 144.9926324 },
+    { "lat": -37.8328013, "lon": 144.9923373 },
+    { "lat": -37.8327102, "lon": 144.9920825 },
+    { "lat": -37.8325884, "lon": 144.9918129 },
+    { "lat": -37.8324125, "lon": 144.9914830 },
+    { "lat": -37.8322759, "lon": 144.9912792 },
+    { "lat": -37.8321022, "lon": 144.9910418 },
+    { "lat": -37.8319433, "lon": 144.9908487 },
+    { "lat": -37.8310863, "lon": 144.9899230 },
+    { "lat": -37.8309369, "lon": 144.9897605 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "highway": "motorway",
+    "lanes": "4",
+    "lit": "yes",
+    "loc_name": "Monash Freeway",
+    "maxheight": "4.65",
+    "maxspeed": "80",
+    "name": "CityLink",
+    "network": "AU:VIC",
+    "oneway": "yes",
+    "ref": "M1",
+    "surface": "asphalt",
+    "toll": "yes",
+    "website": "https://www.citylink.com.au/"
+  }
+},
+{
+  "type": "way",
+  "id": 27128338,
+  "bounds": {
+    "minlat": -37.8326814,
+    "minlon": 145.0013269,
+    "maxlat": -37.8310048,
+    "maxlon": 145.0041863
+  },
+  "nodes": [
+    27123790,
+    12435161838,
+    12435161837,
+    27123784,
+    12435161836,
+    12435161835,
+    27123772,
+    12435161834,
+    27123767,
+    12435161833,
+    297640818,
+    12435161832,
+    297640846,
+    12435161831,
+    297640820,
+    12435161830,
+    297640825
+  ],
+  "geometry": [
+    { "lat": -37.8310048, "lon": 145.0041863 },
+    { "lat": -37.8310574, "lon": 145.0040223 },
+    { "lat": -37.8311272, "lon": 145.0038607 },
+    { "lat": -37.8311887, "lon": 145.0037290 },
+    { "lat": -37.8312724, "lon": 145.0035636 },
+    { "lat": -37.8313543, "lon": 145.0034177 },
+    { "lat": -37.8314636, "lon": 145.0032453 },
+    { "lat": -37.8315862, "lon": 145.0030664 },
+    { "lat": -37.8317703, "lon": 145.0028049 },
+    { "lat": -37.8319511, "lon": 145.0025490 },
+    { "lat": -37.8320938, "lon": 145.0023379 },
+    { "lat": -37.8321975, "lon": 145.0021777 },
+    { "lat": -37.8323030, "lon": 145.0020106 },
+    { "lat": -37.8324088, "lon": 145.0018312 },
+    { "lat": -37.8325101, "lon": 145.0016507 },
+    { "lat": -37.8325962, "lon": 145.0014905 },
+    { "lat": -37.8326814, "lon": 145.0013269 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "highway": "motorway",
+    "lanes": "4",
+    "layer": "1",
+    "lit": "yes",
+    "loc_name": "Monash Freeway",
+    "maxspeed": "80",
+    "name": "CityLink",
+    "network": "AU:VIC",
+    "oneway": "yes",
+    "ref": "M1",
+    "surface": "asphalt",
+    "toll": "yes",
+    "website": "https://www.citylink.com.au/"
+  }
+},
+{
+  "type": "way",
+  "id": 42639097,
+  "bounds": {
+    "minlat": -37.8307990,
+    "minlon": 144.9878093,
+    "maxlat": -37.8306378,
+    "maxlon": 144.9879619
+  },
+  "nodes": [
+    532754670,
+    13898357466,
+    13898357467,
+    13898357468,
+    13898357469,
+    532754671
+  ],
+  "geometry": [
+    { "lat": -37.8307990, "lon": 144.9879619 },
+    { "lat": -37.8307708, "lon": 144.9879316 },
+    { "lat": -37.8307440, "lon": 144.9879040 },
+    { "lat": -37.8307098, "lon": 144.9878706 },
+    { "lat": -37.8306659, "lon": 144.9878327 },
+    { "lat": -37.8306378, "lon": 144.9878093 }
+  ],
+  "tags": {
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "1",
+    "maxspeed": "60",
+    "name": "Alexandra Avenue",
+    "network": "AU:VIC:T",
+    "oneway": "yes",
+    "ref": "2",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 42639105,
+  "bounds": {
+    "minlat": -37.8315374,
+    "minlon": 144.9879153,
+    "maxlat": -37.8313427,
+    "maxlon": 144.9879292
+  },
+  "nodes": [
+    369139042,
+    1497170575,
+    5743388048
+  ],
+  "geometry": [
+    { "lat": -37.8315374, "lon": 144.9879153 },
+    { "lat": -37.8314397, "lon": 144.9879248 },
+    { "lat": -37.8313427, "lon": 144.9879292 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "lit": "no",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 45367043,
+  "bounds": {
+    "minlat": -37.8245431,
+    "minlon": 144.9887152,
+    "maxlat": -37.8244255,
+    "maxlon": 144.9887321
+  },
+  "nodes": [
+    60095436,
+    576844518,
+    6344474614
+  ],
+  "geometry": [
+    { "lat": -37.8245431, "lon": 144.9887152 },
+    { "lat": -37.8244891, "lon": 144.9887229 },
+    { "lat": -37.8244255, "lon": 144.9887321 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "destination:lanes": "Barassi Way|Punt Road|Punt Road|Punt Road",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 45367192,
+  "bounds": {
+    "minlat": -37.8291865,
+    "minlon": 144.9879895,
+    "maxlat": -37.8278610,
+    "maxlon": 144.9881849
+  },
+  "nodes": [
+    8899621182,
+    13898357500,
+    13898357498,
+    1497170588,
+    576853268,
+    8899621181,
+    13898369504,
+    1497170622
+  ],
+  "geometry": [
+    { "lat": -37.8291865, "lon": 144.9879895 },
+    { "lat": -37.8288741, "lon": 144.9880104 },
+    { "lat": -37.8287754, "lon": 144.9880209 },
+    { "lat": -37.8286819, "lon": 144.9880327 },
+    { "lat": -37.8285386, "lon": 144.9880550 },
+    { "lat": -37.8281919, "lon": 144.9881176 },
+    { "lat": -37.8280156, "lon": 144.9881491 },
+    { "lat": -37.8278610, "lon": 144.9881849 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "lit": "yes",
+    "maxheight": "6.0",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 45367327,
+  "bounds": {
+    "minlat": -37.8249063,
+    "minlon": 144.9888300,
+    "maxlat": -37.8247033,
+    "maxlon": 144.9888727
+  },
+  "nodes": [
+    60095425,
+    10279660205,
+    576860018,
+    6770710988
+  ],
+  "geometry": [
+    { "lat": -37.8247033, "lon": 144.9888727 },
+    { "lat": -37.8247554, "lon": 144.9888612 },
+    { "lat": -37.8247923, "lon": 144.9888539 },
+    { "lat": -37.8249063, "lon": 144.9888300 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 45403076,
+  "bounds": {
+    "minlat": -37.8233840,
+    "minlon": 144.9890955,
+    "maxlat": -37.8232053,
+    "maxlon": 144.9891213
+  },
+  "nodes": [
+    576845616,
+    266739860
+  ],
+  "geometry": [
+    { "lat": -37.8232053, "lon": 144.9891213 },
+    { "lat": -37.8233840, "lon": 144.9890955 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 131710579,
+  "bounds": {
+    "minlat": -37.8225369,
+    "minlon": 144.9890438,
+    "maxlat": -37.8214049,
+    "maxlon": 144.9892062
+  },
+  "nodes": [
+    1449316583,
+    2614490977,
+    418539889
+  ],
+  "geometry": [
+    { "lat": -37.8225369, "lon": 144.9890438 },
+    { "lat": -37.8215351, "lon": 144.9891882 },
+    { "lat": -37.8214049, "lon": 144.9892062 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxspeed": "70",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 136486558,
+  "bounds": {
+    "minlat": -37.8305133,
+    "minlon": 144.9878013,
+    "maxlat": -37.8303348,
+    "maxlon": 144.9878534
+  },
+  "nodes": [
+    30385500,
+    13898357471,
+    13898357472,
+    13898357473,
+    532754673
+  ],
+  "geometry": [
+    { "lat": -37.8303348, "lon": 144.9878013 },
+    { "lat": -37.8303624, "lon": 144.9878055 },
+    { "lat": -37.8303963, "lon": 144.9878149 },
+    { "lat": -37.8304501, "lon": 144.9878331 },
+    { "lat": -37.8305133, "lon": 144.9878534 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt",
+    "turn:lanes": "left|through|through"
+  }
+},
+{
+  "type": "way",
+  "id": 139214693,
+  "bounds": {
+    "minlat": -37.8284669,
+    "minlon": 144.9871729,
+    "maxlat": -37.8280088,
+    "maxlon": 144.9875394
+  },
+  "nodes": [
+    267315333,
+    30385525
+  ],
+  "geometry": [
+    { "lat": -37.8284669, "lon": 144.9875394 },
+    { "lat": -37.8280088, "lon": 144.9871729 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "destination": "Kings Way;West Gate Bridge",
+    "highway": "motorway",
+    "lanes": "4",
+    "layer": "2",
+    "loc_name": "Monash Freeway",
+    "maxspeed": "80",
+    "name": "CityLink",
+    "name:bridge": "Morshead Overpass",
+    "network": "AU:VIC",
+    "oneway": "yes",
+    "ref": "M1",
+    "surface": "asphalt",
+    "toll": "yes",
+    "turn:lanes": "slight_left|through|through|through",
+    "website": "https://www.citylink.com.au/"
+  }
+},
+{
+  "type": "way",
+  "id": 198736315,
+  "bounds": {
+    "minlat": -37.8307990,
+    "minlon": 144.9878534,
+    "maxlat": -37.8305133,
+    "maxlon": 144.9879619
+  },
+  "nodes": [
+    532754673,
+    532754670
+  ],
+  "geometry": [
+    { "lat": -37.8305133, "lon": 144.9878534 },
+    { "lat": -37.8307990, "lon": 144.9879619 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 198736991,
+  "bounds": {
+    "minlat": -37.8253522,
+    "minlon": 144.9886250,
+    "maxlat": -37.8250736,
+    "maxlon": 144.9886543
+  },
+  "nodes": [
+    1496842652,
+    9033718528
+  ],
+  "geometry": [
+    { "lat": -37.8253522, "lon": 144.9886250 },
+    { "lat": -37.8250736, "lon": 144.9886543 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "bus:lanes": "designated||||",
+    "cycleway:left": "share_busway",
+    "cycleway:right": "no",
+    "destination:lanes": "none|Swan Street;Olympic Boulevard|Brunton Avenue|none|none|none",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "6",
+    "lanes:bus": "1",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "turn:lanes": "none|left|slight_left|through|through|through"
+  }
+},
+{
+  "type": "way",
+  "id": 265392074,
+  "bounds": {
+    "minlat": -37.8274358,
+    "minlon": 144.9843024,
+    "maxlat": -37.8263838,
+    "maxlon": 144.9866438
+  },
+  "nodes": [
+    441990607,
+    1525908931,
+    1525908950,
+    1525909014,
+    27123632,
+    1496246609,
+    267315276,
+    267315277,
+    1525908927,
+    1525908947,
+    27123649,
+    267315278,
+    1525908990,
+    27123663,
+    1525908959,
+    5461056814
+  ],
+  "geometry": [
+    { "lat": -37.8274358, "lon": 144.9866438 },
+    { "lat": -37.8273105, "lon": 144.9864961 },
+    { "lat": -37.8271964, "lon": 144.9863463 },
+    { "lat": -37.8271028, "lon": 144.9862115 },
+    { "lat": -37.8270504, "lon": 144.9861293 },
+    { "lat": -37.8269721, "lon": 144.9859996 },
+    { "lat": -37.8268985, "lon": 144.9858621 },
+    { "lat": -37.8268324, "lon": 144.9857326 },
+    { "lat": -37.8267756, "lon": 144.9856096 },
+    { "lat": -37.8267019, "lon": 144.9854255 },
+    { "lat": -37.8266198, "lon": 144.9852126 },
+    { "lat": -37.8265709, "lon": 144.9850555 },
+    { "lat": -37.8265223, "lon": 144.9848807 },
+    { "lat": -37.8264841, "lon": 144.9847298 },
+    { "lat": -37.8264060, "lon": 144.9844087 },
+    { "lat": -37.8263838, "lon": 144.9843024 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "destination": "Kings Way;West Gate Bridge",
+    "hazmat": "no",
+    "highway": "motorway",
+    "lanes": "3",
+    "loc_name": "Monash Freeway",
+    "maxheight": "4.65",
+    "maxspeed": "80",
+    "name": "CityLink",
+    "network": "AU:VIC",
+    "oneway": "yes",
+    "ref": "M1",
+    "surface": "asphalt",
+    "toll": "yes",
+    "website": "https://www.citylink.com.au/"
+  }
+},
+{
+  "type": "way",
+  "id": 294213711,
+  "bounds": {
+    "minlat": -37.8246730,
+    "minlon": 144.9886971,
+    "maxlat": -37.8245431,
+    "maxlon": 144.9887152
+  },
+  "nodes": [
+    60095426,
+    576859145,
+    60095204,
+    60095436
+  ],
+  "geometry": [
+    { "lat": -37.8246730, "lon": 144.9886971 },
+    { "lat": -37.8246181, "lon": 144.9887043 },
+    { "lat": -37.8245879, "lon": 144.9887088 },
+    { "lat": -37.8245431, "lon": 144.9887152 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "cycleway:both": "no",
+    "destination:lanes": "Barassi Way|Punt Road|Punt Road|Punt Road",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 356689225,
+  "bounds": {
+    "minlat": -37.8306378,
+    "minlon": 144.9877958,
+    "maxlat": -37.8304578,
+    "maxlon": 144.9878093
+  },
+  "nodes": [
+    532754671,
+    532754672
+  ],
+  "geometry": [
+    { "lat": -37.8306378, "lon": 144.9878093 },
+    { "lat": -37.8304578, "lon": 144.9877958 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29"
+  }
+},
+{
+  "type": "way",
+  "id": 356689226,
+  "bounds": {
+    "minlat": -37.8310698,
+    "minlon": 144.9879619,
+    "maxlat": -37.8307990,
+    "maxlon": 144.9880218
+  },
+  "nodes": [
+    532754670,
+    13898357465,
+    8905768527,
+    13898357464,
+    13898357463,
+    1497170604
+  ],
+  "geometry": [
+    { "lat": -37.8307990, "lon": 144.9879619 },
+    { "lat": -37.8308635, "lon": 144.9879800 },
+    { "lat": -37.8309134, "lon": 144.9879928 },
+    { "lat": -37.8309616, "lon": 144.9880027 },
+    { "lat": -37.8310276, "lon": 144.9880157 },
+    { "lat": -37.8310698, "lon": 144.9880218 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 386571431,
+  "bounds": {
+    "minlat": -37.8292852,
+    "minlon": 144.9879804,
+    "maxlat": -37.8292028,
+    "maxlon": 144.9880041
+  },
+  "nodes": [
+    1497170635,
+    30385499
+  ],
+  "geometry": [
+    { "lat": -37.8292028, "lon": 144.9880041 },
+    { "lat": -37.8292852, "lon": 144.9879804 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "bridge": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "3",
+    "layer": "1",
+    "maxheight": "6.0",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt",
+    "turn:lanes": "left|none|none"
+  }
+},
+{
+  "type": "way",
+  "id": 405464562,
+  "bounds": {
+    "minlat": -37.8245574,
+    "minlon": 144.9888998,
+    "maxlat": -37.8243411,
+    "maxlon": 144.9889361
+  },
+  "nodes": [
+    9033718532,
+    4148845961,
+    2614490981,
+    576860093,
+    60095437
+  ],
+  "geometry": [
+    { "lat": -37.8243411, "lon": 144.9889361 },
+    { "lat": -37.8244317, "lon": 144.9889214 },
+    { "lat": -37.8244647, "lon": 144.9889154 },
+    { "lat": -37.8244949, "lon": 144.9889100 },
+    { "lat": -37.8245574, "lon": 144.9888998 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "bus:lanes": "designated||||",
+    "cycleway:left": "share_busway",
+    "cycleway:right": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "5",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "turn:lanes": "none|left|through|through|through"
+  }
+},
+{
+  "type": "way",
+  "id": 405464564,
+  "bounds": {
+    "minlat": -37.8242990,
+    "minlon": 144.9889445,
+    "maxlat": -37.8234358,
+    "maxlon": 144.9890879
+  },
+  "nodes": [
+    4076621887,
+    12079950843,
+    6344474612
+  ],
+  "geometry": [
+    { "lat": -37.8234358, "lon": 144.9890879 },
+    { "lat": -37.8240646, "lon": 144.9889901 },
+    { "lat": -37.8242990, "lon": 144.9889445 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "destination:lanes": "Punt Road|Punt Road|Punt Road|Olympic Boulevard",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "24/7",
+    "maxheight": "4.3",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 405464565,
+  "bounds": {
+    "minlat": -37.8233320,
+    "minlon": 144.9889418,
+    "maxlat": -37.8230802,
+    "maxlon": 144.9889757
+  },
+  "nodes": [
+    9320692071,
+    576845696
+  ],
+  "geometry": [
+    { "lat": -37.8233320, "lon": 144.9889418 },
+    { "lat": -37.8230802, "lon": 144.9889757 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "no",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 405464566,
+  "bounds": {
+    "minlat": -37.8240161,
+    "minlon": 144.9888132,
+    "maxlat": -37.8234813,
+    "maxlon": 144.9889184
+  },
+  "nodes": [
+    60095306,
+    9033718530
+  ],
+  "geometry": [
+    { "lat": -37.8240161, "lon": 144.9888132 },
+    { "lat": -37.8234813, "lon": 144.9889184 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "destination:lanes": "Barassi Way|Punt Road|Punt Road|Punt Road",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "24/7",
+    "maxheight": "4.3",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 569402015,
+  "bounds": {
+    "minlat": -37.8247033,
+    "minlon": 144.9888727,
+    "maxlat": -37.8245574,
+    "maxlon": 144.9888998
+  },
+  "nodes": [
+    60095437,
+    30220690,
+    576859101,
+    60095425
+  ],
+  "geometry": [
+    { "lat": -37.8245574, "lon": 144.9888998 },
+    { "lat": -37.8246102, "lon": 144.9888907 },
+    { "lat": -37.8246402, "lon": 144.9888853 },
+    { "lat": -37.8247033, "lon": 144.9888727 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29"
+  }
+},
+{
+  "type": "way",
+  "id": 581654459,
+  "bounds": {
+    "minlat": -37.8305133,
+    "minlon": 144.9877958,
+    "maxlat": -37.8304578,
+    "maxlon": 144.9878534
+  },
+  "nodes": [
+    532754672,
+    2385138111,
+    532754673
+  ],
+  "geometry": [
+    { "lat": -37.8304578, "lon": 144.9877958 },
+    { "lat": -37.8304817, "lon": 144.9878227 },
+    { "lat": -37.8305133, "lon": 144.9878534 }
+  ],
+  "tags": {
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "1",
+    "maxspeed": "60",
+    "name": "Alexandra Avenue",
+    "network": "AU:VIC:T",
+    "oneway": "yes",
+    "ref": "2",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 581654460,
+  "bounds": {
+    "minlat": -37.8304578,
+    "minlon": 144.9877958,
+    "maxlat": -37.8303348,
+    "maxlon": 144.9878013
+  },
+  "nodes": [
+    532754672,
+    13898357470,
+    30385500
+  ],
+  "geometry": [
+    { "lat": -37.8304578, "lon": 144.9877958 },
+    { "lat": -37.8303551, "lon": 144.9877960 },
+    { "lat": -37.8303348, "lon": 144.9878013 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 677590641,
+  "bounds": {
+    "minlat": -37.8244255,
+    "minlon": 144.9887321,
+    "maxlat": -37.8240161,
+    "maxlon": 144.9888132
+  },
+  "nodes": [
+    6344474614,
+    8899624028,
+    60095306
+  ],
+  "geometry": [
+    { "lat": -37.8244255, "lon": 144.9887321 },
+    { "lat": -37.8242506, "lon": 144.9887660 },
+    { "lat": -37.8240161, "lon": 144.9888132 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "destination:lanes": "Barassi Way|Punt Road|Punt Road|Punt Road",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 688249245,
+  "bounds": {
+    "minlat": -37.8285851,
+    "minlon": 144.9881737,
+    "maxlat": -37.8279666,
+    "maxlon": 144.9882961
+  },
+  "nodes": [
+    1497170632,
+    9037574090,
+    1497170560
+  ],
+  "geometry": [
+    { "lat": -37.8279666, "lon": 144.9882961 },
+    { "lat": -37.8280863, "lon": 144.9882741 },
+    { "lat": -37.8285851, "lon": 144.9881737 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "change:lanes": "no|not_left|yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt",
+    "turn:lanes": "slight_left|none|none"
+  }
+},
+{
+  "type": "way",
+  "id": 761305483,
+  "bounds": {
+    "minlat": -37.8324846,
+    "minlon": 144.9877248,
+    "maxlat": -37.8315374,
+    "maxlon": 144.9879153
+  },
+  "nodes": [
+    369139042,
+    369138126
+  ],
+  "geometry": [
+    { "lat": -37.8315374, "lon": 144.9879153 },
+    { "lat": -37.8324846, "lon": 144.9877248 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "ref": "29",
+    "sidewalk": "both"
+  }
+},
+{
+  "type": "way",
+  "id": 784083854,
+  "bounds": {
+    "minlat": -37.8253081,
+    "minlon": 144.9887662,
+    "maxlat": -37.8249063,
+    "maxlon": 144.9888300
+  },
+  "nodes": [
+    6770710988,
+    9033718534,
+    2114973863
+  ],
+  "geometry": [
+    { "lat": -37.8249063, "lon": 144.9888300 },
+    { "lat": -37.8250440, "lon": 144.9888058 },
+    { "lat": -37.8253081, "lon": 144.9887662 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 792170394,
+  "bounds": {
+    "minlat": -37.8378814,
+    "minlon": 144.9866120,
+    "maxlat": -37.8354555,
+    "maxlon": 144.9871193
+  },
+  "nodes": [
+    9049380550,
+    306275450,
+    306275512,
+    306277813,
+    306275454,
+    3926257361
+  ],
+  "geometry": [
+    { "lat": -37.8354555, "lon": 144.9871193 },
+    { "lat": -37.8359242, "lon": 144.9870198 },
+    { "lat": -37.8360376, "lon": 144.9869948 },
+    { "lat": -37.8367568, "lon": 144.9868430 },
+    { "lat": -37.8371132, "lon": 144.9867686 },
+    { "lat": -37.8378814, "lon": 144.9866120 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "ref": "29",
+    "sidewalk:both": "separate"
+  }
+},
+{
+  "type": "way",
+  "id": 797496807,
+  "bounds": {
+    "minlat": -37.8315374,
+    "minlon": 144.9879153,
+    "maxlat": -37.8310698,
+    "maxlon": 144.9880239
+  },
+  "nodes": [
+    1497170604,
+    13898357462,
+    1497170594,
+    8905768482,
+    532754675,
+    532754676,
+    369139042
+  ],
+  "geometry": [
+    { "lat": -37.8310698, "lon": 144.9880218 },
+    { "lat": -37.8311030, "lon": 144.9880239 },
+    { "lat": -37.8311403, "lon": 144.9880232 },
+    { "lat": -37.8311702, "lon": 144.9880211 },
+    { "lat": -37.8312085, "lon": 144.9880165 },
+    { "lat": -37.8312796, "lon": 144.9880000 },
+    { "lat": -37.8315374, "lon": 144.9879153 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976172871,
+  "bounds": {
+    "minlat": -37.8278610,
+    "minlon": 144.9881849,
+    "maxlat": -37.8273693,
+    "maxlon": 144.9883560
+  },
+  "nodes": [
+    1497170622,
+    13898369505,
+    7957742283
+  ],
+  "geometry": [
+    { "lat": -37.8278610, "lon": 144.9881849 },
+    { "lat": -37.8277603, "lon": 144.9882180 },
+    { "lat": -37.8273693, "lon": 144.9883560 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxheight": "6.0",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976172873,
+  "bounds": {
+    "minlat": -37.8248056,
+    "minlon": 144.9886804,
+    "maxlat": -37.8246730,
+    "maxlon": 144.9886971
+  },
+  "nodes": [
+    2614490985,
+    576860104,
+    10279660204,
+    60095426
+  ],
+  "geometry": [
+    { "lat": -37.8248056, "lon": 144.9886804 },
+    { "lat": -37.8247730, "lon": 144.9886844 },
+    { "lat": -37.8247336, "lon": 144.9886896 },
+    { "lat": -37.8246730, "lon": 144.9886971 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "change:lanes": "yes|no|no|no|no|no",
+    "cycleway:both": "no",
+    "destination:lanes": "Punt Road|Swan Street;Olympic Boulevard|Brunton Avenue|Punt Road|Punt Road|Punt Road",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "6",
+    "lanes:bus": "1",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "turn:lanes": "none|left|slight_left|through|through|through"
+  }
+},
+{
+  "type": "way",
+  "id": 976172874,
+  "bounds": {
+    "minlat": -37.8250736,
+    "minlon": 144.9886543,
+    "maxlat": -37.8248056,
+    "maxlon": 144.9886804
+  },
+  "nodes": [
+    9033718528,
+    4148845964,
+    2614490985
+  ],
+  "geometry": [
+    { "lat": -37.8250736, "lon": 144.9886543 },
+    { "lat": -37.8248256, "lon": 144.9886782 },
+    { "lat": -37.8248056, "lon": 144.9886804 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "bus:lanes": "designated||||",
+    "change:lanes": "no|no|no|no|no|no",
+    "cycleway:left": "share_busway",
+    "cycleway:right": "no",
+    "destination:lanes": "none|Swan Street;Olympic Boulevard|Brunton Avenue|Punt Road|Punt Road|Punt Road",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "6",
+    "lanes:bus": "1",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "turn:lanes": "none|left|slight_left|through|through|through"
+  }
+},
+{
+  "type": "way",
+  "id": 976172875,
+  "bounds": {
+    "minlat": -37.8234813,
+    "minlon": 144.9889184,
+    "maxlat": -37.8233320,
+    "maxlon": 144.9889418
+  },
+  "nodes": [
+    9033718530,
+    12079950842,
+    9320692071
+  ],
+  "geometry": [
+    { "lat": -37.8234813, "lon": 144.9889184 },
+    { "lat": -37.8233921, "lon": 144.9889324 },
+    { "lat": -37.8233320, "lon": 144.9889418 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "change:lanes": "no|not_left|yes|yes",
+    "cycleway:both": "no",
+    "destination:lanes": "Barassi Way|Punt Road|Punt Road|Punt Road (*)",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "maxheight": "4.3",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt",
+    "turn:lanes": "left|through|through|through|through"
+  }
+},
+{
+  "type": "way",
+  "id": 976172877,
+  "bounds": {
+    "minlat": -37.8230802,
+    "minlon": 144.9889757,
+    "maxlat": -37.8225369,
+    "maxlon": 144.9890438
+  },
+  "nodes": [
+    576845696,
+    714861714,
+    1449316583
+  ],
+  "geometry": [
+    { "lat": -37.8230802, "lon": 144.9889757 },
+    { "lat": -37.8230149, "lon": 144.9889859 },
+    { "lat": -37.8225369, "lon": 144.9890438 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976172878,
+  "bounds": {
+    "minlat": -37.8243411,
+    "minlon": 144.9889361,
+    "maxlat": -37.8242990,
+    "maxlon": 144.9889445
+  },
+  "nodes": [
+    6344474612,
+    9033718532
+  ],
+  "geometry": [
+    { "lat": -37.8242990, "lon": 144.9889445 },
+    { "lat": -37.8243411, "lon": 144.9889361 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:left": "share_busway",
+    "cycleway:right": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 976172882,
+  "bounds": {
+    "minlat": -37.8292852,
+    "minlon": 144.9879804,
+    "maxlat": -37.8291865,
+    "maxlon": 144.9879895
+  },
+  "nodes": [
+    30385499,
+    9033718539,
+    8899621184,
+    8899621182
+  ],
+  "geometry": [
+    { "lat": -37.8292852, "lon": 144.9879804 },
+    { "lat": -37.8292554, "lon": 144.9879823 },
+    { "lat": -37.8292146, "lon": 144.9879873 },
+    { "lat": -37.8291865, "lon": 144.9879895 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "bridge": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "layer": "1",
+    "maxheight": "6.0",
+    "maxspeed": "60",
+    "maxweight:signed": "no",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976172883,
+  "bounds": {
+    "minlat": -37.8292028,
+    "minlon": 144.9880041,
+    "maxlat": -37.8285851,
+    "maxlon": 144.9881737
+  },
+  "nodes": [
+    1497170560,
+    13898357499,
+    1497170635
+  ],
+  "geometry": [
+    { "lat": -37.8285851, "lon": 144.9881737 },
+    { "lat": -37.8286697, "lon": 144.9881536 },
+    { "lat": -37.8292028, "lon": 144.9880041 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "lit": "yes",
+    "maxheight": "6.0",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976621998,
+  "bounds": {
+    "minlat": -37.8230712,
+    "minlon": 144.9891443,
+    "maxlat": -37.8214253,
+    "maxlon": 144.9893805
+  },
+  "nodes": [
+    418539890,
+    248746910,
+    1449316648,
+    248746942,
+    8930691805
+  ],
+  "geometry": [
+    { "lat": -37.8214253, "lon": 144.9893805 },
+    { "lat": -37.8216485, "lon": 144.9893503 },
+    { "lat": -37.8225510, "lon": 144.9892181 },
+    { "lat": -37.8228109, "lon": 144.9891804 },
+    { "lat": -37.8230712, "lon": 144.9891443 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "yes",
+    "maxspeed": "70",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976621999,
+  "bounds": {
+    "minlat": -37.8214253,
+    "minlon": 144.9893805,
+    "maxlat": -37.8208161,
+    "maxlon": 144.9894841
+  },
+  "nodes": [
+    9037482210,
+    2614490976,
+    9220853426,
+    418539890
+  ],
+  "geometry": [
+    { "lat": -37.8208161, "lon": 144.9894841 },
+    { "lat": -37.8212963, "lon": 144.9893969 },
+    { "lat": -37.8213246, "lon": 144.9893938 },
+    { "lat": -37.8214253, "lon": 144.9893805 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "maxspeed": "70",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt",
+    "turn:lanes": "left;through|through|through|right"
+  }
+},
+{
+  "type": "way",
+  "id": 976622000,
+  "bounds": {
+    "minlat": -37.8208161,
+    "minlon": 144.9894841,
+    "maxlat": -37.8202921,
+    "maxlon": 144.9895674
+  },
+  "nodes": [
+    30385747,
+    4005718489,
+    9037482210
+  ],
+  "geometry": [
+    { "lat": -37.8202921, "lon": 144.9895674 },
+    { "lat": -37.8203907, "lon": 144.9895519 },
+    { "lat": -37.8208161, "lon": 144.9894841 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "yes",
+    "maxspeed": "70",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976629627,
+  "bounds": {
+    "minlat": -37.8234358,
+    "minlon": 144.9890879,
+    "maxlat": -37.8233840,
+    "maxlon": 144.9890955
+  },
+  "nodes": [
+    266739860,
+    4076621887
+  ],
+  "geometry": [
+    { "lat": -37.8233840, "lon": 144.9890955 },
+    { "lat": -37.8234358, "lon": 144.9890879 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 976629628,
+  "bounds": {
+    "minlat": -37.8232053,
+    "minlon": 144.9891213,
+    "maxlat": -37.8230712,
+    "maxlon": 144.9891443
+  },
+  "nodes": [
+    8930691805,
+    60096297,
+    576845616
+  ],
+  "geometry": [
+    { "lat": -37.8230712, "lon": 144.9891443 },
+    { "lat": -37.8231050, "lon": 144.9891384 },
+    { "lat": -37.8232053, "lon": 144.9891213 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976632924,
+  "bounds": {
+    "minlat": -37.8262067,
+    "minlon": 144.9885552,
+    "maxlat": -37.8255876,
+    "maxlon": 144.9886585
+  },
+  "nodes": [
+    8902414153,
+    9039098188,
+    643997533
+  ],
+  "geometry": [
+    { "lat": -37.8255876, "lon": 144.9886585 },
+    { "lat": -37.8257981, "lon": 144.9886230 },
+    { "lat": -37.8262067, "lon": 144.9885552 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "7",
+    "lanes:backward": "4",
+    "lanes:forward": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "no",
+    "ref": "29",
+    "sidewalk:both": "separate",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976632925,
+  "bounds": {
+    "minlat": -37.8279666,
+    "minlon": 144.9882961,
+    "maxlat": -37.8273693,
+    "maxlon": 144.9883560
+  },
+  "nodes": [
+    7957742283,
+    13898369503,
+    1497170632
+  ],
+  "geometry": [
+    { "lat": -37.8273693, "lon": 144.9883560 },
+    { "lat": -37.8278903, "lon": 144.9883070 },
+    { "lat": -37.8279666, "lon": 144.9882961 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976641564,
+  "bounds": {
+    "minlat": -37.8303348,
+    "minlon": 144.9878013,
+    "maxlat": -37.8302276,
+    "maxlon": 144.9878197
+  },
+  "nodes": [
+    9037666502,
+    13898357487,
+    9037666501,
+    30385500
+  ],
+  "geometry": [
+    { "lat": -37.8302276, "lon": 144.9878197 },
+    { "lat": -37.8302922, "lon": 144.9878081 },
+    { "lat": -37.8303189, "lon": 144.9878032 },
+    { "lat": -37.8303348, "lon": 144.9878013 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "bridge:name": "Hoddle Bridge",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "5",
+    "lanes:backward": "2",
+    "lanes:forward": "3",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "ref": "29",
+    "turn:lanes:forward": "left|through|through",
+    "wikidata": "Q5875976"
+  }
+},
+{
+  "type": "way",
+  "id": 976641565,
+  "bounds": {
+    "minlat": -37.8302276,
+    "minlon": 144.9878197,
+    "maxlat": -37.8300859,
+    "maxlon": 144.9878467
+  },
+  "nodes": [
+    7957743956,
+    9037666502
+  ],
+  "geometry": [
+    { "lat": -37.8300859, "lon": 144.9878467 },
+    { "lat": -37.8302276, "lon": 144.9878197 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "bridge": "yes",
+    "bridge:name": "Hoddle Bridge",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "5",
+    "lanes:backward": "2",
+    "lanes:forward": "3",
+    "layer": "1",
+    "lit": "yes",
+    "maxspeed": "60",
+    "maxweight:signed": "no",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "ref": "29",
+    "surface": "asphalt",
+    "turn:lanes:forward": "left|through|through",
+    "wikidata": "Q5875976"
+  }
+},
+{
+  "type": "way",
+  "id": 976641566,
+  "bounds": {
+    "minlat": -37.8309714,
+    "minlon": 144.9878093,
+    "maxlat": -37.8306378,
+    "maxlon": 144.9878733
+  },
+  "nodes": [
+    369138971,
+    2614490990,
+    8905768530,
+    13898357474,
+    532754671
+  ],
+  "geometry": [
+    { "lat": -37.8309714, "lon": 144.9878733 },
+    { "lat": -37.8308263, "lon": 144.9878354 },
+    { "lat": -37.8307882, "lon": 144.9878272 },
+    { "lat": -37.8307464, "lon": 144.9878202 },
+    { "lat": -37.8306378, "lon": 144.9878093 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt",
+    "turn:lanes": "left|through|through"
+  }
+},
+{
+  "type": "way",
+  "id": 976641831,
+  "bounds": {
+    "minlat": -37.8313427,
+    "minlon": 144.9878733,
+    "maxlat": -37.8309714,
+    "maxlon": 144.9879292
+  },
+  "nodes": [
+    5743388048,
+    532754677,
+    1497170627,
+    1497170633,
+    369138971
+  ],
+  "geometry": [
+    { "lat": -37.8313427, "lon": 144.9879292 },
+    { "lat": -37.8312888, "lon": 144.9879291 },
+    { "lat": -37.8312327, "lon": 144.9879260 },
+    { "lat": -37.8310889, "lon": 144.9879027 },
+    { "lat": -37.8309714, "lon": 144.9878733 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "2",
+    "lit": "no",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976643370,
+  "bounds": {
+    "minlat": -37.8214049,
+    "minlon": 144.9892062,
+    "maxlat": -37.8209590,
+    "maxlon": 144.9892834
+  },
+  "nodes": [
+    418539889,
+    9220853425,
+    9037652678
+  ],
+  "geometry": [
+    { "lat": -37.8214049, "lon": 144.9892062 },
+    { "lat": -37.8213062, "lon": 144.9892222 },
+    { "lat": -37.8209590, "lon": 144.9892834 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxspeed": "70",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976643371,
+  "bounds": {
+    "minlat": -37.8209590,
+    "minlon": 144.9892834,
+    "maxlat": -37.8202249,
+    "maxlon": 144.9894041
+  },
+  "nodes": [
+    9037652678,
+    2614490975,
+    9037652679,
+    4005718490,
+    3804569172
+  ],
+  "geometry": [
+    { "lat": -37.8209590, "lon": 144.9892834 },
+    { "lat": -37.8208948, "lon": 144.9892945 },
+    { "lat": -37.8203663, "lon": 144.9893816 },
+    { "lat": -37.8203461, "lon": 144.9893849 },
+    { "lat": -37.8202249, "lon": 144.9894041 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "yes",
+    "maxspeed": "70",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt",
+    "turn:lanes": "left|through|through|through|right"
+  }
+},
+{
+  "type": "way",
+  "id": 976794416,
+  "bounds": {
+    "minlat": -37.8255876,
+    "minlon": 144.9886585,
+    "maxlat": -37.8253081,
+    "maxlon": 144.9887662
+  },
+  "nodes": [
+    2114973863,
+    8902414153
+  ],
+  "geometry": [
+    { "lat": -37.8253081, "lon": 144.9887662 },
+    { "lat": -37.8255876, "lon": 144.9886585 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976794418,
+  "bounds": {
+    "minlat": -37.8273693,
+    "minlon": 144.9883560,
+    "maxlat": -37.8269683,
+    "maxlon": 144.9884258
+  },
+  "nodes": [
+    9039098189,
+    7957742283
+  ],
+  "geometry": [
+    { "lat": -37.8269683, "lon": 144.9884258 },
+    { "lat": -37.8273693, "lon": 144.9883560 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "6",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "no",
+    "ref": "29",
+    "sidewalk": "both",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976794419,
+  "bounds": {
+    "minlat": -37.8269683,
+    "minlon": 144.9884258,
+    "maxlat": -37.8267410,
+    "maxlon": 144.9884635
+  },
+  "nodes": [
+    643997953,
+    13789178568,
+    9039098189
+  ],
+  "geometry": [
+    { "lat": -37.8267410, "lon": 144.9884635 },
+    { "lat": -37.8267656, "lon": 144.9884593 },
+    { "lat": -37.8269683, "lon": 144.9884258 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "change:lanes:backward": "no|not_left|yes|yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "7",
+    "lanes:backward": "4",
+    "lanes:forward": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "no",
+    "ref": "29",
+    "sidewalk:both": "separate",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 976794420,
+  "bounds": {
+    "minlat": -37.8255876,
+    "minlon": 144.9886250,
+    "maxlat": -37.8253522,
+    "maxlon": 144.9886585
+  },
+  "nodes": [
+    8902414153,
+    1496842652
+  ],
+  "geometry": [
+    { "lat": -37.8255876, "lon": 144.9886585 },
+    { "lat": -37.8253522, "lon": 144.9886250 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "no",
+    "highway": "trunk",
+    "lanes": "4",
+    "lanes:bus": "1",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "yes",
+    "ref": "29",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "turn:lanes": "slight_left|none|none|none"
+  }
+},
+{
+  "type": "way",
+  "id": 976794421,
+  "bounds": {
+    "minlat": -37.8267410,
+    "minlon": 144.9884635,
+    "maxlat": -37.8262067,
+    "maxlon": 144.9885552
+  },
+  "nodes": [
+    643997533,
+    13789178569,
+    643997953
+  ],
+  "geometry": [
+    { "lat": -37.8262067, "lon": 144.9885552 },
+    { "lat": -37.8266803, "lon": 144.9884739 },
+    { "lat": -37.8267410, "lon": 144.9884635 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "7",
+    "lanes:backward": "4",
+    "lanes:forward": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "oneway": "no",
+    "ref": "29",
+    "sidewalk:both": "separate",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 977993985,
+  "bounds": {
+    "minlat": -37.8339794,
+    "minlon": 144.9874296,
+    "maxlat": -37.8324846,
+    "maxlon": 144.9877248
+  },
+  "nodes": [
+    369138126,
+    369138239,
+    369138466,
+    369140111,
+    9049380549
+  ],
+  "geometry": [
+    { "lat": -37.8324846, "lon": 144.9877248 },
+    { "lat": -37.8330629, "lon": 144.9876104 },
+    { "lat": -37.8334079, "lon": 144.9875430 },
+    { "lat": -37.8336573, "lon": 144.9874952 },
+    { "lat": -37.8339794, "lon": 144.9874296 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "4",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "ref": "29"
+  }
+},
+{
+  "type": "way",
+  "id": 977993987,
+  "bounds": {
+    "minlat": -37.8347422,
+    "minlon": 144.9872693,
+    "maxlat": -37.8339794,
+    "maxlon": 144.9874296
+  },
+  "nodes": [
+    9049380549,
+    13789178549,
+    10970078759,
+    7957743950
+  ],
+  "geometry": [
+    { "lat": -37.8339794, "lon": 144.9874296 },
+    { "lat": -37.8346063, "lon": 144.9872987 },
+    { "lat": -37.8346331, "lon": 144.9872930 },
+    { "lat": -37.8347422, "lon": 144.9872693 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "5",
+    "lanes:backward": "2",
+    "lanes:forward": "3",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "ref": "29",
+    "sidewalk:both": "separate",
+    "turn:lanes:forward": "none|none|right"
+  }
+},
+{
+  "type": "way",
+  "id": 977993988,
+  "bounds": {
+    "minlat": -37.8354555,
+    "minlon": 144.9871193,
+    "maxlat": -37.8347422,
+    "maxlon": 144.9872693
+  },
+  "nodes": [
+    7957743950,
+    10970078760,
+    13789178551,
+    9049380550
+  ],
+  "geometry": [
+    { "lat": -37.8347422, "lon": 144.9872693 },
+    { "lat": -37.8348534, "lon": 144.9872470 },
+    { "lat": -37.8348800, "lon": 144.9872413 },
+    { "lat": -37.8354555, "lon": 144.9871193 }
+  ],
+  "tags": {
+    "alt_name": "Hoddle Highway",
+    "bicycle": "yes",
+    "cycleway:both": "no",
+    "foot": "yes",
+    "highway": "trunk",
+    "lanes": "5",
+    "lanes:backward": "3",
+    "lanes:forward": "2",
+    "lit": "yes",
+    "maxspeed": "60",
+    "name": "Punt Road",
+    "network": "AU:VIC:S",
+    "ref": "29",
+    "sidewalk:both": "separate",
+    "turn:lanes:backward": "none|none|right"
+  }
+}
+
+  ]
+}
