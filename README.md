@@ -2,6 +2,8 @@
 
 > Lighting up a data-dark precinct, one window at a time.
 
+Lumen 是一个面向墨尔本 Cremorne 片区的步行舒适度原型：用租户窗边的计数节点感知人流，结合阴影和人流模型，为通勤者推荐更凉、更不挤的步行路线，并为片区管理方和市议会提供 What-if 情景模拟。
+
 FEIT Hackathon 2026 · Cremorne Digital Hub 题目的可运行原型。三层结构 **Sense → Understand → Act** 全部在本机运行，不依赖任何云 API。
 
 | 层 | 原型里有什么 | 代码 |
@@ -16,6 +18,8 @@ FEIT Hackathon 2026 · Cremorne Digital Hub 题目的可运行原型。三层结
 - **手机端**（http://localhost:8000/m）：给普通用户，只显示和自己有关的一两件事。免登录，设置只存在手机上。Console 右上角 **Phone app** 按钮会给出局域网二维码。
 
 ## 快速启动
+
+环境要求：Python 3.10+、Node.js 20.19+（Vite 8 的最低要求）。命令以 PowerShell 为例，macOS / Linux 下把 `;` 换成 `&&` 即可。
 
 ```powershell
 # 1. 后端依赖（一次）
@@ -103,9 +107,9 @@ python -m lumen.evaluate --plan <已保存的情景 id 或 JSON 文件>
 - **主权**：常见短信服务（如 Twilio）在海外。Demo 不真发短信；量产时换成澳洲本地托管的短信网关，短信里只放公开的街道级信息。
 - **形式**：PWA（manifest + service worker，可“添加到主屏幕”）。原方案写的是 Next.js；原型继续用现有的 Vite + React，在同一个前端里加 `/m` 路由，这样仍然由 FastAPI 单进程离线提供全部服务，不用额外跑 Node 服务端。
 
-## 演示脚本（按 Mia 的一天，约 4 分钟）
+## 演示流程（以虚构通勤者 Mia 的一天为例，约 4 分钟）
 
-| 时间 | 操作 | 要讲的点 |
+| 时间 | 操作 | 看点 |
 | --- | --- | --- |
 | 开场 | 讲台上放节点，评委走过，右上角计数跳动 | 700 个租户就是 700 个传感器。节点只发数字，服务端拒收任何其他字段（带 `image` 字段的请求直接 422） |
 | 8:15 | **Brief** 标签：Slack 里的 Morning Brief | 数字全部来自后端，LLM 在本机运行 |
@@ -132,7 +136,7 @@ python -m lumen.evaluate --plan <已保存的情景 id 或 JSON 文件>
 
 拥挤方面：热天 8:45 有 94 条行程会经过 LOS D 及以上路段。Least crowded 路线把这部分拥挤步行时间的中位数降低 93%，中位绕路 0.8 分钟。
 
-## 哪些是真的，哪些是模拟的（pitch 时如实说）
+## 哪些是真实数据，哪些是模型 / 模拟
 
 | 真实 / 实测 | 模型 / 估算 | 合成（界面上已标注） |
 | --- | --- | --- |
@@ -163,3 +167,9 @@ frontend/                Vite + React + MapLibre GL；/ 是 Console，/m 是手�
 What-if：`POST /api/whatif/compare`（`{items, years, scenario, t}` → 情景 key + 前后对比；之后 `/api/state`、`/api/route` 可带 `&plan=<key>`）· `GET/POST /api/whatif/plans` · `DELETE /api/whatif/plans/{id}` · `GET /api/whatif/side-by-side?ids=` · `GET /api/whatif/export.csv?ids=`（`POST` 导出未保存的草稿）
 
 手机端：`GET /api/me/commuter?stop=&office=&arrive=09:00` · `GET /api/me/driver?streets=Swan Street,Cremorne Street` · `GET /api/me/merchant?node=node-03&open=07:00&close=16:00` · `GET /api/me/council` · `POST /api/sms`（`{session, text}`，模拟短信网关）
+
+## 数据来源与许可
+
+- 建筑、路网、车站、部分树木：© [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors，[ODbL](https://opendatacommons.org/licenses/odbl/) 许可。`data/raw/` 下缓存的是 Overpass API 导出的数据，可用 `python data/fetch_osm.py` 重新下载。
+- 行道树：City of Yarra 开放数据（street tree inventory），使用时请遵守其开放数据许可并注明来源。
+- 地图渲染：[MapLibre GL JS](https://maplibre.org/)。
