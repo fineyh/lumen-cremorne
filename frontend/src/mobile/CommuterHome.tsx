@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Clock, Compass, Footprints, MapPin, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock } from "lucide-react";
+import { ChevronDown, Clock, Compass, Footprints, MapPin, Navigation2, RotateCw, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock, WifiOff } from "lucide-react";
 import { get, LOS, LOS_COLORS, MODE_COLORS, type CommuterHome as Home, type Meta, type Route } from "../api";
 import MiniMap from "./MiniMap";
+import RouteWalk from "./RouteWalk";
 import type { Settings } from "./MobileApp";
 import { CATS, type NearbyPreset } from "./NearbyView";
 import { loadPref, PREFS, savePref, type Pref } from "./routePref";
@@ -20,6 +21,8 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
   const [meeting, setMeeting] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
+  const [walking, setWalking] = useState<"commute" | "meeting" | null>(null);
   const [pref, setPrefState] = useState<Pref>(loadPref);
   const setPref = (p: Pref) => {
     setPrefState(p);
@@ -31,9 +34,9 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
     const q = new URLSearchParams({ stop: s.stop, office: s.office, arrive: s.arrive, scenario });
     if (meeting) q.set("meeting", meeting);
     get<Home>(`/api/me/commuter?${q}`).then(setHome).catch(() => setErr(true));
-  }, [s.stop, s.office, s.arrive, scenario, meeting]);
+  }, [s.stop, s.office, s.arrive, scenario, meeting, tick]);
 
-  if (err) return <p className="m-empty">Couldn't reach Lumen. Are you on the precinct Wi-Fi?</p>;
+  if (err) return <Offline onRetry={() => setTick(tick + 1)} />;
   if (!home) return <Skeleton />;
   const t = home.today;
   const w = (pref !== "auto" && home.options?.[pref]) || t;
@@ -62,6 +65,11 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
   const meet = home.recommendations.find((x) => x.kind === "meeting");
   const md = meet?.data as MeetingData | undefined;
   const offices = meta.offices.filter((o) => o.name && /[A-Za-z]{3}/.test(o.name) && o.id !== s.office);
+
+  if (walking === "commute")
+    return <RouteWalk route={r} start={w.leave_minutes} from={home.from} to={home.to} hot={hot} back="Today" onClose={() => setWalking(null)} />;
+  if (walking === "meeting" && md)
+    return <RouteWalk route={md.route} start={900} from="your building" to={md.to} hot={md.heat_matters} back="Today" onClose={() => setWalking(null)} />;
 
   return (
     <div className="m-stack">
@@ -128,6 +136,9 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
             ))}
           </ol>
         )}
+        {!!r.walk_steps?.length && (
+          <button className="m-btn primary go-start" onClick={() => setWalking("commute")}><Navigation2 size={16} /> Walk it step by step</button>
+        )}
       </section>
 
       <section className="m-card rec">
@@ -166,6 +177,9 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
           <MiniMap height={150} lines={[
             { coords: md.route.geometry.coordinates, color: MODE_COLORS.coolest },
           ]} />
+          {!!md.route.walk_steps?.length && (
+            <button className="m-btn go-start" onClick={() => setWalking("meeting")}><Navigation2 size={16} /> Walk it step by step</button>
+          )}
         </section>
       )}
 
@@ -173,6 +187,17 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
         Numbers come from Lumen's shade and crowd models. Text written by {t.engine === "template" ? "a fixed template" : "a local model that can't change any number"}.
         Your stop and building are sent with this request only and never stored.
       </p>
+    </div>
+  );
+}
+
+/** When a request fails: say so and offer another go, instead of loading forever. */
+export function Offline({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="m-empty m-offline">
+      <WifiOff size={28} />
+      <p>Couldn't reach Lumen. Check your connection and try again.</p>
+      <button className="m-btn" onClick={onRetry}><RotateCw size={15} /> Try again</button>
     </div>
   );
 }

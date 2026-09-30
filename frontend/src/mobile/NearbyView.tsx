@@ -4,6 +4,7 @@ import {
   Navigation2, Pill, Plus, RotateCcw, ShoppingBasket, Sun, Toilet, TrainFront, TreeDeciduous, Trees, Users, UtensilsCrossed, type LucideIcon,
 } from "lucide-react";
 import { fmtTime, get, MODE_COLORS, type Meta, type NearbyChip, type NearbyPlace, type NearbyResponse, type NearbyWalk, type Route } from "../api";
+import { Offline } from "./CommuterHome";
 import MiniMap, { type Pin } from "./MiniMap";
 import type { Settings } from "./MobileApp";
 import WalkView from "./WalkView";
@@ -72,6 +73,7 @@ export default function NearbyView({ meta, s, scenario, preset }: { meta: Meta; 
   const [data, setData] = useState<NearbyResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
   const [sel, setSel] = useState(0);
   const [walk, setWalk] = useState<{ data: NearbyResponse; place: NearbyPlace; trip: Trip } | null>(null);
   const req = useRef(0);
@@ -110,7 +112,7 @@ export default function NearbyView({ meta, s, scenario, preset }: { meta: Meta; 
         .finally(() => id === req.current && setBusy(false));
     }, 160);
     return () => clearTimeout(timer);
-  }, [want, budget, trip, t, scenario, s.office, s.stop]);
+  }, [want, budget, trip, t, scenario, s.office, s.stop, tick]);
 
   const cat = CATS[want];
   const counts = Object.fromEntries(meta.nearby?.map((c) => [c.key, c.count]) ?? []);
@@ -186,7 +188,7 @@ export default function NearbyView({ meta, s, scenario, preset }: { meta: Meta; 
         </div>
       </section>
 
-      {err && <p className="m-empty">Couldn't reach Lumen. Are you on the precinct Wi-Fi?</p>}
+      {err && <Offline onRetry={() => setTick(tick + 1)} />}
       {!err && !data && <div className="sk sk-card" />}
       {!err && data && (
         <Results data={data} sel={Math.min(sel, Math.max(0, data.results.length - 1))} setSel={setSel} busy={busy} trip={trip}

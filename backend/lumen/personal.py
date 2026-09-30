@@ -91,7 +91,7 @@ def _best_departure(lumen: Lumen, a: int, b: int, scenario: str, arrive: int):
 def _card(lumen: Lumen, a: int, b: int, cand: tuple, stop_name: str, office_name: str, usual, auto: bool) -> dict:
     """One walk (route + departure time) with its numbers and the plain-English lines under the map."""
     _, _, mode, leave, nodes, cond, st = cand
-    route = lumen.router.describe(nodes, mode, cond)
+    route = lumen.router.describe(nodes, mode, cond, walk=True)
     short_now = lumen.router.path_stats(lumen.router._path(a, b, lumen.router.weights("shortest", cond)), cond)
     vs_short = {
         "sun_saved": round(short_now["sun_minutes"] - st["sun_minutes"], 1),
@@ -179,7 +179,7 @@ def _meeting(lumen: Lumen, office: str, meeting: str | None, scenario: str) -> d
     if meeting is None:
         return None
     t = 900
-    res = lumen.routes(office, meeting, scenario, t)
+    res = lumen.routes(office, meeting, scenario, t, walk=True)
     cool = next(r for r in res["routes"] if r["mode"] == "coolest")
     short = res["routes"][0]
     return {"to": res["to"], "to_id": meeting, "time": fmt_time(t), "temp_c": res["temp_c"],

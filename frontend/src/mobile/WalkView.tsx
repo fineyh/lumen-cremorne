@@ -12,14 +12,14 @@ type Item =
   | { k: "stop"; at: number }
   | { k: "end"; at: number };
 
-const TURN_ICON: Record<Turn, LucideIcon> = {
+export const TURN_ICON: Record<Turn, LucideIcon> = {
   start: Navigation2, straight: ArrowUp, "slight-left": ArrowUpLeft, "slight-right": ArrowUpRight,
   left: CornerUpLeft, right: CornerUpRight, uturn: Undo2,
 };
-const HEADING = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+export const HEADING = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
 const n1 = (x: number) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));
 
-function say(st: WalkStep) {
+export function say(st: WalkStep) {
   const street = st.street === "laneway" ? "the laneway" : st.street === "crossing" ? "the crossing" : st.street;
   const side = st.turn.endsWith("left") ? "left" : "right";
   switch (st.turn) {
@@ -164,7 +164,7 @@ export default function WalkView({ data, place, trip, onClose }: { data: NearbyR
   );
 }
 
-function Walk({ st, at, leg, hot }: { st: WalkStep; at: number; leg: string; hot: boolean }) {
+export function Walk({ st, at, leg, hot }: { st: WalkStep; at: number; leg: string; hot: boolean }) {
   const busy = LOS.indexOf(st.los) >= 3;
   return (
     <>
@@ -180,7 +180,7 @@ function Walk({ st, at, leg, hot }: { st: WalkStep; at: number; leg: string; hot
   );
 }
 
-function Row({ icon: I, rot = 0, tone, kicker, title, sub }: { icon: LucideIcon; rot?: number; tone: string; kicker: string; title: string; sub: string }) {
+export function Row({ icon: I, rot = 0, tone, kicker, title, sub }: { icon: LucideIcon; rot?: number; tone: string; kicker: string; title: string; sub: string }) {
   return (
     <div className={`wk-step ${tone}`}>
       <span className="wk-turn"><I size={26} strokeWidth={2.4} style={rot ? { rotate: `${rot}deg` } : undefined} /></span>

@@ -72,6 +72,8 @@ export type Route = {
   geometry: { type: "LineString"; coordinates: [number, number][] };
   vs_shortest: { extra_min: number; sun_min_saved: number; crowd_min_saved: number; comfort_gain: number };
   same_as_shortest: boolean;
+  /** only when asked for (?walk=1, and on the phone's commute cards): steps to follow on the phone */
+  walk_steps?: WalkStep[];
   access: RouteAccess;
 };
 export type Barrier = { kind: "steps" | "kerb" | "blocked"; lon: number; lat: number; street: string };

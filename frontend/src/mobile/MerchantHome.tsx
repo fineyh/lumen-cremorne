@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { Clock, DoorOpen, Sun, TrendingDown, TrendingUp, UserPlus, Coffee } from "lucide-react";
 import { get, type MerchantHome as Home, type Meta } from "../api";
-import { Skeleton } from "./CommuterHome";
+import { Offline, Skeleton } from "./CommuterHome";
 import type { Settings } from "./MobileApp";
 
 const ICONS: Record<string, typeof Sun> = { roster: UserPlus, open: DoorOpen, close: Clock, quiet: Coffee, heat: Sun };
 
 export default function MerchantHome({ s, scenario }: { meta: Meta; s: Settings; scenario: string }) {
   const [home, setHome] = useState<Home | null>(null);
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    get<Home>(`/api/me/merchant?node=${s.node}&open=${s.open}&close=${s.close}&scenario=${scenario}`).then(setHome).catch(() => setHome(null));
-  }, [s.node, s.open, s.close, scenario]);
+    setErr(false);
+    get<Home>(`/api/me/merchant?node=${s.node}&open=${s.open}&close=${s.close}&scenario=${scenario}`).then(setHome).catch(() => setErr(true));
+  }, [s.node, s.open, s.close, scenario, tick]);
+  if (err) return <Offline onRetry={() => setTick(tick + 1)} />;
   if (!home) return <Skeleton />;
   const max = Math.max(...home.today.map((h) => h.people), ...home.last_week.map((h) => h.people));
   const [oh, ch] = [parseInt(s.open), parseInt(s.close)];

@@ -18,13 +18,14 @@ import {
 } from "./api";
 
 type Tab = "route" | "console" | "whatif" | "brief" | "impact" | "limits";
-const TABS: { key: Tab; label: string; icon: typeof RouteIcon }[] = [
-  { key: "route", label: "Route", icon: RouteIcon },
-  { key: "console", label: "Precinct", icon: LayoutDashboard },
-  { key: "whatif", label: "What-if", icon: Sprout },
-  { key: "brief", label: "Brief", icon: MessageSquareText },
-  { key: "impact", label: "Impact", icon: BarChart3 },
-  { key: "limits", label: "Limits", icon: ShieldCheck },
+// who each tab is for: the Console is CDH's, but some tabs preview what other people get elsewhere
+const TABS: { key: Tab; label: string; icon: typeof RouteIcon; who: string; note: string }[] = [
+  { key: "route", label: "Route", icon: RouteIcon, who: "office workers", note: "Any walk at any time. On their phone it's the Today card and Walk." },
+  { key: "console", label: "Precinct", icon: LayoutDashboard, who: "CDH", note: "Precinct health, window nodes and the weekly council report." },
+  { key: "whatif", label: "What-if", icon: Sprout, who: "CDH and City of Yarra", note: "Try trees, sails and closures before funding them." },
+  { key: "brief", label: "Brief", icon: MessageSquareText, who: "tenant staff", note: "Posted to workplace Slack each morning. Ask Lumen is on the phone too." },
+  { key: "impact", label: "Impact", icon: BarChart3, who: "decision makers", note: "Offline evaluation over 304 station-to-office walks." },
+  { key: "limits", label: "Limits", icon: ShieldCheck, who: "everyone", note: "Who Lumen doesn't serve yet, privacy, sovereignty and cost." },
 ];
 const SIDE = 412;
 
@@ -262,6 +263,10 @@ export default function App() {
             </button>
           ))}
         </nav>
+        {(() => {
+          const t = TABS.find((x) => x.key === tab)!;
+          return <p className="tab-who"><b>For {t.who}</b> {t.note}</p>;
+        })()}
         <div className="panel">
           {tab === "route" && (
             <RoutePanel
