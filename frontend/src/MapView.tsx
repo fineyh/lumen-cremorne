@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { ExpressionSpecification, GeoJSONSource, MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { LOS, LOS_COLORS, LOS_TEXT, MODE_COLORS, get, type MarkedStreet, type Meta, type Route, type State, type Tool } from "./api";
+import { LOS, LOS_COLORS, LOS_TEXT, MODE_COLORS, get, type Barrier, type MarkedStreet, type Meta, type Route, type State, type Tool } from "./api";
+import { ACCESS_BADGES, STOP_COLORS, glyph, loadBadge, type Glyph } from "./accessIcons";
 
 export type LayerToggles = {
   shadows: boolean;
@@ -11,6 +12,8 @@ export type LayerToggles = {
   buildings3d: boolean;
   nodes: boolean;
   poles: boolean;
+  stops: boolean;
+  access: boolean;
 };
 
 export type EditClick = { lngLat: [number, number]; treeIndex?: number; itemIndex?: number };
@@ -35,6 +38,9 @@ type Props = {
   sidePad: number;
   // Ask Lumen: streets the answer names
   marked: MarkedStreet[];
+  // step-free: where the selected route meets steps or raised kerbs; clicking a stop's buttons sets A or B
+  barriers: Barrier[];
+  onRouteEnd: (ref: string, which: "from" | "to") => void;
 };
 
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -104,6 +110,8 @@ export default function MapView(p: Props) {
   const prevChanged = useRef<number[]>([]);
   const networkFc = useRef<GeoJSON.FeatureCollection | null>(null);
   const markTags = useRef<maplibregl.Marker[]>([]);
+  const stopEls = useRef<HTMLDivElement[]>([]);
+  const barrierTags = useRef<maplibregl.Marker[]>([]);
   const propsRef = useRef(p);
   propsRef.current = p;
 
@@ -116,6 +124,9 @@ export default function MapView(p: Props) {
         get<GeoJSON.FeatureCollection>("/api/layers/network"),
         get<GeoJSON.FeatureCollection>("/api/layers/buildings"),
         get<GeoJSON.FeatureCollection>("/api/layers/trees"),
+        // optional layers: an older backend without them still gets a working map
+        get<GeoJSON.FeatureCollection>("/api/layers/transit").catch(() => EMPTY),
+        get<GeoJSON.FeatureCollection>("/api/layers/access").catch(() => EMPTY),
       ]);
       const style = await loadStyle();
       if (cancelled || !el.current) return;
@@ -138,8 +149,11 @@ export default function MapView(p: Props) {
         for (const l of map.getStyle().layers ?? []) {
           if (l.id.includes("building")) map.setLayoutProperty(l.id, "visibility", "none");
         }
-        const [network, buildings, trees] = await layers;
+        const [network, buildings, trees, transit, accessFc] = await layers;
+        const badges = await Promise.all(Object.keys(ACCESS_BADGES).map(async (k) => [k, await loadBadge(k)] as const));
         if (cancelled) return;
+        for (const [k, img] of badges) map.addImage(`acc-${k}`, img, { pixelRatio: 2 });
+        const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "edge-pop", offset: 10 });
         networkFc.current = network;
         map.addSource("shadows", { type: "geojson", data: EMPTY });
         map.addSource("wi-shadows", { type: "geojson", data: EMPTY });
@@ -149,6 +163,7 @@ export default function MapView(p: Props) {
         map.addSource("routes", { type: "geojson", data: EMPTY });
         map.addSource("nodes", { type: "geojson", data: EMPTY });
         map.addSource("overlay", { type: "geojson", data: EMPTY });
+        map.addSource("access", { type: "geojson", data: accessFc });
 
         map.addLayer({ id: "shadows", type: "fill", source: "shadows", paint: { "fill-color": "#15294a", "fill-opacity": 0.3 } });
         map.addLayer({ id: "wi-shadows", type: "fill", source: "wi-shadows", paint: { "fill-color": "#065f46", "fill-opacity": 0.38 } });
@@ -180,6 +195,12 @@ export default function MapView(p: Props) {
           id: "wi-diff", type: "line", source: "network",
           layout: { "line-cap": "round", "line-join": "round" },
           paint: { "line-color": diffColor, "line-width": ["interpolate", ["linear"], ["zoom"], 14, 2.5, 18, 8], "line-opacity": diffOpacity },
+        });
+        // steps on the walking network: what step-free routes steer around
+        map.addLayer({
+          id: "access-steps", type: "line", source: "network", filter: ["==", ["get", "cls"], "steps"],
+          layout: { "line-cap": "butt" },
+          paint: { "line-color": "#d97706", "line-width": ["interpolate", ["linear"], ["zoom"], 14, 2.5, 18, 7], "line-dasharray": [0.5, 0.35] },
         });
         map.addLayer({
           id: "buildings-flat", type: "fill", source: "buildings",
@@ -236,6 +257,80 @@ export default function MapView(p: Props) {
           },
         });
 
+        // access features, in three tiers so zooming in reveals the finer detail
+        const icon: ExpressionSpecification = ["case", ["==", ["get", "kind"], "venue"], ["concat", "acc-venue-", ["get", "wheelchair"]], ["concat", "acc-", ["get", "kind"]]];
+        const tiers: [string, string[], number][] = [
+          ["access-minor", ["kerb"], 16.4],
+          ["access-mid", ["signal", "venue"], 15.6],
+          ["access-major", ["parking", "toilet", "lift", "steps", "kerb_raised"], 14.2],
+        ];
+        for (const [id, kinds, minzoom] of tiers) {
+          map.addLayer({
+            id, type: "symbol", source: "access", minzoom, filter: ["in", ["get", "kind"], ["literal", kinds]],
+            layout: {
+              "icon-image": icon, "icon-allow-overlap": true, "icon-ignore-placement": true,
+              "icon-size": ["interpolate", ["linear"], ["zoom"], 15, 0.85, 18, 1.15],
+            },
+          });
+          map.on("mousemove", id, (e) => {
+            const f = e.features?.[0];
+            if (!f || propsRef.current.editTool) return;
+            map.getCanvas().style.cursor = propsRef.current.pickMode ? "crosshair" : "help";
+            popup.setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number]).setHTML(accessHtml(f.properties)).addTo(map);
+          });
+          map.on("mouseleave", id, () => {
+            map.getCanvas().style.cursor = cursorFor();
+            popup.remove();
+          });
+        }
+
+        // stations and stops: DOM markers, so they stay crisp and clickable without a glyph server
+        const stopPop = new maplibregl.Popup({ className: "edge-pop stop-pop", offset: 16, maxWidth: "290px" });
+        stopEls.current = transit.features.map((f) => {
+          const pr = f.properties as StopProps;
+          const [lon, lat] = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+          const d = stopMarker(pr);
+          d.tabIndex = 0;
+          d.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter" || ev.key === " ") {
+              ev.preventDefault();
+              d.click();
+            }
+          });
+          d.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            const ref = pr.id ?? `${lon.toFixed(6)},${lat.toFixed(6)}`;
+            const pick = propsRef.current.pickMode;
+            if (pick) return propsRef.current.onRouteEnd(ref, pick);
+            // open away from the panels that sit over the map (layer bar on top, side panel left, time bar below)
+            let pt = map.project([lon, lat]);
+            const { clientWidth: w, clientHeight: h } = map.getContainer();
+            const side = propsRef.current.sidePad;
+            if (pt.x < side + 40 || pt.x > w - 60 || pt.y < 110 || pt.y > h - 190) {
+              // bring an off-screen or covered stop into the open part of the map first
+              const offset: [number, number] = [side / 2, 70];
+              map.easeTo({ center: [lon, lat], offset, duration: 450 });
+              pt = new maplibregl.Point(w / 2 + offset[0], h / 2 + offset[1]);
+            }
+            const v = pt.y < 380 ? "top" : "bottom";
+            const anchor = (pt.x < propsRef.current.sidePad + 170 ? `${v}-left` : v) as maplibregl.PositionAnchor;
+            stopPop.remove();
+            stopPop.options.anchor = anchor;
+            stopPop.setLngLat([lon, lat]).setDOMContent(stopCard(pr, (which) => {
+              propsRef.current.onRouteEnd(ref, which);
+              stopPop.remove();
+            })).addTo(map);
+          });
+          new maplibregl.Marker({ element: d }).setLngLat([lon, lat]).addTo(map);
+          return d;
+        });
+        const zoomClass = () => {
+          const z = map.getZoom();
+          if (el.current) el.current.dataset.z = z < 15.2 ? "lo" : z < 16.8 ? "mid" : "hi";
+        };
+        map.on("zoom", zoomClass);
+        zoomClass();
+
         // council smart poles (locations only: their data isn't published)
         const { sensors, items } = propsRef.current.meta.poles;
         poleEls.current = items.map((pole) => {
@@ -253,11 +348,12 @@ export default function MapView(p: Props) {
           return d;
         });
 
-        const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "edge-pop", offset: 10 });
         map.on("mousemove", "network", (e) => {
           const f = e.features?.[0];
           const st = propsRef.current.state;
           if (!f || !st || propsRef.current.editTool) return;
+          // an access icon on top of the footpath wins
+          if (map.queryRenderedFeatures(e.point, { layers: tiers.map((t) => t[0]).filter((id) => map.getLayoutProperty(id, "visibility") !== "none") }).length) return;
           map.getCanvas().style.cursor = propsRef.current.pickMode ? "crosshair" : "pointer";
           const i = f.properties.id as number;
           const los = st.edges.los[i];
@@ -358,6 +454,10 @@ export default function MapView(p: Props) {
     vis("buildings-3d", t.buildings3d);
     vis("buildings-flat", !t.buildings3d);
     for (const d of poleEls.current) d.style.display = t.poles ? "" : "none";
+    for (const d of stopEls.current) d.style.display = t.stops ? "" : "none";
+    for (const id of ["access-steps", "access-minor", "access-mid", "access-major"]) vis(id, t.access);
+    // tram stop badges show level access only while the access layer is on
+    el.current?.classList.toggle("show-access", t.access);
   }
 
   function applyShadows() {
@@ -479,6 +579,18 @@ export default function MapView(p: Props) {
     }
   }
 
+  function applyBarriers() {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    for (const m of barrierTags.current) m.remove();
+    barrierTags.current = propsRef.current.barriers.map((b) => {
+      const d = document.createElement("div");
+      d.innerHTML = `<div class="barrier-tag">${glyph(b.kind === "steps" ? "stairs" : "kerb", 12, 2.6)}<span>${b.kind === "steps" ? "Steps" : b.kind === "kerb" ? "Raised kerb" : "Not step-free"}</span></div>`;
+      d.title = `${b.street}: not passable in a wheelchair. Turn on Step-free to route around it.`;
+      return new maplibregl.Marker({ element: d, anchor: "bottom", offset: [0, -6] }).setLngLat([b.lon, b.lat]).addTo(map);
+    });
+  }
+
   function applyAll() {
     applyToggles();
     applyEdges();
@@ -490,6 +602,7 @@ export default function MapView(p: Props) {
     applyEndpoints();
     fitRoutes();
     applyMarked();
+    applyBarriers();
   }
 
   useEffect(applyEdges, [p.state]);
@@ -500,6 +613,7 @@ export default function MapView(p: Props) {
   useEffect(applyRoutes, [p.routes, p.selectedMode]);
   useEffect(applyEndpoints, [p.from, p.to]);
   useEffect(applyMarked, [p.marked]);
+  useEffect(applyBarriers, [p.barriers]);
 
   useEffect(fitRoutes, [p.routes]);
   useEffect(() => {
@@ -515,4 +629,93 @@ export default function MapView(p: Props) {
   }, [p.pickMode, p.editTool]);
 
   return <div ref={el} className="map" />;
+}
+
+// ------------------------------------------------------------------ stops and access features
+type StopProps = {
+  id?: string; name: string; kind: "train" | "tram" | "bus";
+  wheelchair?: "yes" | "limited" | "no" | null; routes?: string[];
+  shelter?: boolean | null; bench?: boolean | null; tactile?: boolean | null; realtime?: boolean | null;
+  code?: string | null; platforms?: number | null; fare_gates?: boolean | null;
+};
+
+const esc = (v: unknown) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const stopName = (p: StopProps) => p.name.replace(/ \(tram\)$/, "").replace(/ Station$/, "");
+const STOP_GLYPH: Record<StopProps["kind"], Glyph> = { train: "train", tram: "tram", bus: "bus" };
+
+/** The marker element (MapLibre owns its transform) wrapping the badge we style and animate. */
+function stopMarker(p: StopProps): HTMLDivElement {
+  const outer = document.createElement("div");
+  outer.className = `stop-anchor ${p.kind}`;
+  const d = document.createElement("div");
+  outer.appendChild(d);
+  d.className = `stop-mk ${p.kind}`;
+  d.style.setProperty("--c", STOP_COLORS[p.kind]);
+  outer.setAttribute("role", "button");
+  outer.setAttribute("aria-label", `${p.name}: stop details`);
+  const acc = p.kind === "bus" || !p.wheelchair ? "" :
+    `<i class="stop-acc ${p.wheelchair}" title="${p.wheelchair === "yes" ? "Step-free" : "No level access"}">${glyph(p.wheelchair === "yes" ? "wheelchair" : "stairs", 9, 3)}</i>`;
+  if (p.kind === "train") {
+    d.innerHTML = `<span class="stop-ic">${glyph("train", 15)}</span><span class="stop-lbl">${esc(stopName(p))}${p.code ? `<small>${esc(p.code)}</small>` : ""}</span>${acc}`;
+  } else {
+    const rt = (p.routes ?? []).join(" ");
+    d.innerHTML = `<span class="stop-ic">${glyph(STOP_GLYPH[p.kind], p.kind === "bus" ? 10 : 11)}</span>${rt ? `<b class="stop-rt">${esc(rt)}</b>` : ""}` +
+      `<span class="stop-name">${esc(stopName(p))}</span>${acc}`;
+  }
+  return outer;
+}
+
+function stopCard(p: StopProps, onRoute: (which: "from" | "to") => void): HTMLElement {
+  const d = document.createElement("div");
+  const kind = p.kind === "train" ? "Train station" : p.kind === "tram" ? "Tram stop" : "Bus stop";
+  const routes = p.routes?.length ? ` · Route ${p.routes.join(", ")}` : "";
+  const sub = p.kind === "train" ? [kind, p.code, p.platforms ? `${p.platforms} platforms` : null].filter(Boolean).join(" · ") : kind + routes;
+  let access = "";
+  if (p.kind === "train" && p.wheelchair === "yes") access = `<div class="sp-acc yes">${glyph("wheelchair", 14)}<span><b>Step-free</b> to the platforms</span></div>`;
+  else if (p.kind === "tram" && p.wheelchair === "yes") access = `<div class="sp-acc yes">${glyph("wheelchair", 14)}<span><b>Level-access platform</b>: roll straight on</span></div>`;
+  else if (p.kind === "tram" && p.wheelchair === "no") access = `<div class="sp-acc no">${glyph("stairs", 14)}<span><b>No level access</b>: a step up into the tram</span></div>`;
+  else if (p.kind !== "bus") access = `<div class="sp-acc unk">${glyph("wheelchair", 14)}<span>Level access not recorded</span></div>`;
+  const feat = (v: boolean | null | undefined, label: string) => (v == null ? "" : `<li class="${v ? "ok" : "no"}">${label}</li>`);
+  const feats = [
+    feat(p.shelter, "Shelter"), feat(p.bench, "Seat"), feat(p.tactile, "Tactile paving"),
+    feat(p.realtime, "Live departures"), feat(p.fare_gates, "Fare gates"),
+  ].join("");
+  d.className = "sp";
+  d.innerHTML =
+    `<div class="sp-h"><span class="sp-ic" style="--c:${STOP_COLORS[p.kind]}">${glyph(STOP_GLYPH[p.kind], 16)}</span>` +
+    `<div><b>${esc(stopName(p))}</b><small>${esc(sub)}</small></div></div>` +
+    access + (feats ? `<ul class="sp-f">${feats}</ul>` : "") +
+    `<div class="sp-btns"><button data-w="from"><i class="pin-dot from">A</i>Start here</button><button data-w="to"><i class="pin-dot to">B</i>Go here</button></div>` +
+    `<div class="sp-src">OpenStreetMap · may be incomplete</div>`;
+  for (const b of d.querySelectorAll<HTMLButtonElement>("button[data-w]")) b.addEventListener("click", () => onRoute(b.dataset.w as "from" | "to"));
+  return d;
+}
+
+const WHEEL_TEXT: Record<string, string> = { yes: "Wheelchair accessible", limited: "Partly wheelchair accessible", no: "Not wheelchair accessible" };
+
+function accessHtml(p: Record<string, unknown>): string {
+  const chips = (items: [unknown, string][]) =>
+    items.filter(([v]) => v === true).map(([, l]) => `<span class="ac-chip">${l}</span>`).join("");
+  const head = (title: string, sub?: string) => `<b>${esc(title)}</b>${sub ? `<div class="pp-row"><span>${esc(sub)}</span></div>` : ""}`;
+  switch (p.kind) {
+    case "parking":
+      return head("Accessible parking bay", "Disability permit holders");
+    case "toilet":
+      return head((p.name as string) || "Public toilets", p.wheelchair ? WHEEL_TEXT[p.wheelchair as string] : "Wheelchair access not recorded");
+    case "lift":
+      return head("Lift", "Step-free between levels");
+    case "steps":
+      return head(p.count ? `${p.count} steps` : "Steps", [p.handrail ? "handrail" : null, p.ramp ? "ramp alongside" : "no ramp recorded"].filter(Boolean).join(" · ")) +
+        `<div class="pp-note warn">Step-free routes go around these</div>`;
+    case "kerb_raised":
+      return head("Raised kerb", "No kerb ramp") + `<div class="pp-note warn">Step-free routes go around this</div>`;
+    case "signal":
+      return head("Signalised crossing") +
+        `<div class="ac-chips">${chips([[p.sound, "Audio tone"], [p.vibration, "Vibrating button"], [p.tactile, "Tactile paving"], [p.kerb === "lowered" || p.kerb === "flush", "Kerb ramp"]])}</div>`;
+    case "kerb":
+      return head(p.kerb === "flush" ? "Flush kerb" : p.kerb ? "Kerb ramp" : "Tactile crossing", p.tactile ? "Tactile paving" : "Lowered for wheels");
+    case "venue":
+      return head(p.name as string, `${WHEEL_TEXT[p.wheelchair as string]} · ${p.what}`);
+  }
+  return "";
 }

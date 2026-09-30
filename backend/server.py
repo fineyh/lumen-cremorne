@@ -27,6 +27,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, Response, Streami
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from lumen import access
 from lumen import brief as brief_mod
 from lumen import evaluate, nearby as nearby_mod, personal, sms
 from lumen import whatif as whatif_mod
@@ -52,10 +53,26 @@ def fast(obj) -> Response:
     return Response(json.dumps(obj, separators=(",", ":")), media_type="application/json")
 
 
+STOP_ACCESS = access.stop_details(lumen.p.stops)
+
+
+def _transit_geojson() -> dict:
+    """Train stations, tram stops and bus stops, with what's there for someone who can't do steps."""
+    feats = [{"type": "Feature", "properties": {"id": s["id"], "name": s["name"], "kind": s["kind"], **STOP_ACCESS[s["id"]]},
+              "geometry": {"type": "Point", "coordinates": [round(s["lon"], 6), round(s["lat"], 6)]}}
+             for s in lumen.p.stops]
+    feats += [{"type": "Feature", "properties": {"name": b["name"], "kind": "bus",
+                                                 **{k: b[k] for k in ("routes", "shelter", "bench", "tactile") if b[k] is not None}},
+               "geometry": {"type": "Point", "coordinates": [round(b["lon"], 6), round(b["lat"], 6)]}}
+              for b in access.bus_stops()]
+    return {"type": "FeatureCollection", "features": feats}
+
+
 STATIC = {
     name: json.dumps(fn(), separators=(",", ":"))
     for name, fn in (("network", lumen.network_geojson), ("buildings", lumen.buildings_geojson),
-                     ("trees", lumen.trees_geojson))
+                     ("trees", lumen.trees_geojson), ("transit", _transit_geojson),
+                     ("access", lambda: {"type": "FeatureCollection", "features": access.features()}))
 }
 EVAL: dict = {}
 # Council smart poles: locations only; their sensor data isn't published.
@@ -121,7 +138,7 @@ def meta():
     return {
         "scenarios": [{"key": k, "label": v["label"], "note": v["note"], "tmax": v["tmax"]} for k, v in SCENARIOS.items()],
         "modes": [{"key": k, "label": v["label"]} for k, v in MODES.items()],
-        "stops": [{k: s[k] for k in ("id", "name", "kind", "lon", "lat")} for s in p.stops],
+        "stops": [{**{k: s[k] for k in ("id", "name", "kind", "lon", "lat")}, "access": STOP_ACCESS[s["id"]]} for s in p.stops],
         "offices": [{k: o[k] for k in ("id", "name", "street", "lon", "lat", "levels")} for o in offices],
         "nodes": lumen.crowd.nodes,
         "poles": {"sensors": POLES["sensors"], "items": POLES["poles"]},
@@ -159,10 +176,11 @@ def shadows(scenario: str = "hot", t: int = 525):
 
 @app.get("/api/route")
 def route(src: str = Query(..., alias="from"), dst: str = Query(..., alias="to"),
-          scenario: str = "hot", t: int = 525, temp: float | None = None, plan: str | None = None):
+          scenario: str = "hot", t: int = 525, temp: float | None = None, plan: str | None = None, walk: bool = False,
+          step_free: bool = False):
     pl = _plan(plan)
     try:
-        return fast(lumen.routes(src, dst, scenario, _minutes(t), temp, pl))
+        return fast(lumen.routes(src, dst, scenario, _minutes(t), temp, pl, step_free=step_free, walk=walk))
     except (ValueError, KeyError) as exc:
         raise HTTPException(400, f"unknown place: {exc}")
 

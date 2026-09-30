@@ -16,6 +16,7 @@ Built at **FEIT Hackathon 2026** for the Cremorne Digital Hub challenge. The who
 - **Shade that follows the sun.** NOAA solar position plus building and tree-canopy shadow sweeps across 2,835 buildings, 2,180 trees and 153 km of footpaths.
 - **Crowding you can plan around.** Train-arrival pulses feed a Fruin level-of-service model for every street segment.
 - **Three routes, one score.** Shortest, coolest and least crowded routes, each with a 0–100 Comfort Score.
+- **Step-free when you need it.** Stations, tram and bus stops, kerb ramps, signalised crossings, steps, accessible parking and toilets are on the map from OpenStreetMap. One switch makes every route avoid steps and raised kerbs, and warns when a tram stop has no level-access platform.
 - **"I've got 10 minutes."** Pick coffee, a quick bite, a shady spot to sit, toilets or cash and a time budget; Lumen lists only the places you can reach, use and get back from in time, routed the comfortable way.
 - **Evidence for council.** Plant trees, add shade sails or close a footpath on the map, then see the before/after for all 304 station-to-office walks, with a cost estimate, in under half a second.
 - **One precinct, many users.** A Console for the precinct hub and council, and a phone PWA for commuters, delivery drivers, café owners and the hub, with an SMS channel for drivers who won't install an app.

@@ -62,6 +62,20 @@ QUERIES = {
           nwr["leisure"~"^(park|garden|picnic_table)$"]({bb});
         );
         out tags geom;""",
+    # Step-free access: kerb ramps, crossings, steps, accessible parking and toilets, platforms, bus stops.
+    "access": f"""
+        [out:json][timeout:90];
+        (
+          node["kerb"]({bb});
+          node["highway"~"^(crossing|traffic_signals|elevator|bus_stop)$"]({bb});
+          node["tactile_paving"="yes"]({bb});
+          nw["highway"="steps"]({bb});
+          nw["ramp:wheelchair"]({bb});
+          nw["amenity"~"^(toilets|parking_space)$"]({bb});
+          nw["wheelchair"]({bb});
+          nw["railway"="platform"]({bb});
+        );
+        out tags center;""",
 }
 
 

@@ -12,6 +12,7 @@ import numpy as np
 import shapely
 from shapely.geometry import LineString, Point, Polygon
 
+from . import access
 from .geo import CREMORNE_LONLAT, to_lonlat, to_xy
 
 RAW = pathlib.Path(__file__).resolve().parents[2] / "data" / "raw"
@@ -129,6 +130,7 @@ class Precinct:
     cremorne: Polygon
     street_lines: list = field(default_factory=list)  # (name, LineString) of every named street
     stops: list[dict] = field(default_factory=list)
+    e_access: list[str] = field(default_factory=list)  # per edge: access.edge_class ("" = nothing known)
     offices: list[dict] = field(default_factory=list)
 
     def nearest_node(self, x: float, y: float) -> int:
@@ -238,6 +240,7 @@ def _load_graph():
         width_tag = _num(tags.get("width")) if hw in ("footway", "path", "pedestrian", "cycleway") else None
         side_w = width_tag or STREET_WIDTH_FIX.get(name, SIDEWALK_WIDTH[hw])
         is_road = hw in ROADS
+        acc = access.edge_class(tags)
         eff_w = side_w * (2 if is_road and tags.get("sidewalk") not in ("left", "right", "no") else 1)
         if is_road and tags.get("sidewalk") == "no":
             eff_w = 1.0  # walking on the carriageway edge
@@ -245,7 +248,7 @@ def _load_graph():
             a, b = nodes[i], nodes[i + 1]
             if a == b:
                 continue
-            raw_edges.append((a, b, hw, name, eff_w, is_road))
+            raw_edges.append((a, b, hw, name, eff_w, is_road, acc))
     # Names of arterials we don't walk on (their footpaths are mapped separately), for labelling.
     trunk = RAW / "trunk.json"
     if trunk.exists():
@@ -254,10 +257,17 @@ def _load_graph():
             if name and name != "CityLink" and len(w.get("geometry") or []) >= 2:
                 lx, ly = to_xy([q["lon"] for q in w["geometry"]], [q["lat"] for q in w["geometry"]])
                 street_lines.append((name, LineString(np.column_stack([lx, ly]))))
-    for a, b, hw, name, eff_w, is_road in raw_edges:
+    for a, b, hw, name, eff_w, is_road, acc in raw_edges:
         if g.has_edge(a, b):
             continue
-        g.add_edge(a, b, hw=hw, name=name, width=eff_w, road=is_road)
+        g.add_edge(a, b, hw=hw, name=name, width=eff_w, road=is_road, acc=acc)
+    # a raised kerb bars every path through it, whatever the path itself is like
+    for key in access.raised_kerbs():
+        nid = node_key.get(key)
+        if nid is not None and nid in g:
+            for _, _, d in g.edges(nid, data=True):
+                if d["acc"] not in access.BARRIERS:
+                    d["acc"] = "kerb"
     # keep the main connected component
     main = max(nx.connected_components(g), key=len)
     g = g.subgraph(main).copy()
@@ -271,7 +281,7 @@ def load() -> Precinct:
     cx, cy = to_xy([p[0] for p in CREMORNE_LONLAT], [p[1] for p in CREMORNE_LONLAT])
     cremorne = Polygon(np.column_stack([cx, cy]))
 
-    e_u, e_v, e_len, e_width, e_cls, e_name, e_road, e_coords, e_left = [], [], [], [], [], [], [], [], []
+    e_u, e_v, e_len, e_width, e_cls, e_name, e_road, e_coords, e_left, e_acc = [], [], [], [], [], [], [], [], [], []
     s_edge, s_side, s_x, s_y, e_ns = [], [], [], [], []
     for eid, (u, v, d) in enumerate(g.edges(data=True)):
         (x1, y1), (x2, y2) = node_xy[u], node_xy[v]
@@ -279,7 +289,7 @@ def load() -> Precinct:
         d["eid"] = eid
         d["length"] = length
         e_u.append(u); e_v.append(v); e_len.append(length); e_width.append(d["width"])
-        e_cls.append(d["hw"]); e_name.append(d["name"]); e_road.append(d["road"])
+        e_cls.append(d["hw"]); e_name.append(d["name"]); e_road.append(d["road"]); e_acc.append(d["acc"])
         e_coords.append(np.array([[x1, y1], [x2, y2]]))
         n = max(2, int(math.ceil(length / SAMPLE_STEP)) + 1)
         t = np.linspace(0, 1, n)
@@ -307,7 +317,7 @@ def load() -> Precinct:
         s_edge=np.concatenate(s_edge), s_side=np.concatenate(s_side),
         s_x=np.concatenate(s_x), s_y=np.concatenate(s_y), e_nsamples=np.array(e_ns),
         e_left_compass=e_left, node_xy=node_xy, node_ids=node_ids, node_arr=node_arr,
-        cremorne=cremorne, street_lines=street_lines,
+        cremorne=cremorne, street_lines=street_lines, e_access=e_acc,
     )
     p.stops = _load_stops(p)
     p.offices = _pick_offices(p)

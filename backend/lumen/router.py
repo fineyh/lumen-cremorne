@@ -10,6 +10,10 @@ Comfort Score (0-100, per segment, length-weighted for a route or the precinct):
     comfort_e = 100 - 60 * s_e * min(H, 1) - 40 * min(C_e, 2) / 2
 
 so a fully sunlit segment at 34 C+ loses 60 points and a LOS E+ footpath loses 40.
+
+Step-free (wheelchairs, prams, walking frames): every mode keeps its own weights, then steps, raised
+kerbs and paths tagged wheelchair=no cost STEP_FREE_BARRIER metres extra (so they're only used when
+there's no other way), rough surfaces cost 2.5x and unsignalised crossings a little more than signalised ones.
 """
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ from dataclasses import dataclass, field
 import networkx as nx
 import numpy as np
 
+from .access import BARRIERS
 from .crowd import LOS_LETTERS, CrowdFrame
 from .geo import ring_to_lonlat
 from .precinct import Precinct
@@ -33,6 +38,9 @@ MODES = {
 }
 NIGHT_START = 18 * 60
 QUIET_CLASSES = {"service", "path", "steps", "cycleway"}
+STEP_FREE_BARRIER = 5000.0  # m
+STEP_FREE_ROUGH = 2.5
+STEP_FREE_UNMARKED = 25.0  # m: waiting for a gap in traffic, no kerb ramp guaranteed
 OPPOSITE = {"north": "south", "south": "north", "east": "west", "west": "east"}
 
 
@@ -47,6 +55,7 @@ class Conditions:
     temp_c: float
     minutes: int
     closed: np.ndarray | None = field(default=None)  # bool per edge: shut for works (what-if plans)
+    step_free: bool = False  # plan for wheelchairs and prams (see module docstring)
 
     @property
     def sun(self) -> np.ndarray:
@@ -67,6 +76,11 @@ class Router:
         self.labels = labels
         fw = [c == "footway" and n not in ("footpath", "crossing") for c, n in zip(p.e_cls, p.e_name)]
         self.quiet = np.array([c in QUIET_CLASSES for c in p.e_cls]) | np.array(fw)
+        acc = p.e_access or [""] * len(p.e_len)
+        self.acc = acc
+        self.barrier = np.array([a in BARRIERS for a in acc])
+        self.sf_mult = np.where(np.array([a == "rough" for a in acc]), STEP_FREE_ROUGH, 1.0)
+        self.sf_add = np.where(self.barrier, STEP_FREE_BARRIER, np.where(np.array([a == "unmarked" for a in acc]), STEP_FREE_UNMARKED, 0.0))
 
     # ------------------------------------------------------------------ weights
     def weights(self, mode: str, cond: Conditions) -> np.ndarray:
@@ -79,6 +93,8 @@ class Router:
             h = heat_factor(cond.temp_c)
             c = CROWD_PENALTY[cond.crowd.los]
             w = p.e_len * (1.0 + m["alpha"] * cond.sun * h + m["beta"] * c)
+        if cond.step_free:
+            w = w * self.sf_mult + self.sf_add
         if cond.closed is not None:
             w = np.where(cond.closed, np.inf, w)
         return w
@@ -117,13 +133,13 @@ class Router:
         }
 
     # ------------------------------------------------------------------ public
-    def route(self, src: int, dst: int, mode: str, cond: Conditions, with_geometry: bool = True) -> dict:
+    def route(self, src: int, dst: int, mode: str, cond: Conditions, with_geometry: bool = True, walk: bool = False) -> dict:
         w = self.weights(mode, cond)
         nodes = self._path(src, dst, w)
-        return self.describe(nodes, mode, cond, with_geometry)
+        return self.describe(nodes, mode, cond, with_geometry, walk)
 
-    def routes(self, src: int, dst: int, cond: Conditions) -> list[dict]:
-        out = [self.route(src, dst, m, cond) for m in MODES]
+    def routes(self, src: int, dst: int, cond: Conditions, walk: bool = False) -> list[dict]:
+        out = [self.route(src, dst, m, cond, walk=walk) for m in MODES]
         base = out[0]
         for r in out:
             r["vs_shortest"] = {
@@ -135,7 +151,7 @@ class Router:
             r["same_as_shortest"] = r["edges"] == base["edges"]
         return out
 
-    def describe(self, nodes: list[int], mode: str, cond: Conditions, with_geometry: bool = True) -> dict:
+    def describe(self, nodes: list[int], mode: str, cond: Conditions, with_geometry: bool = True, walk: bool = False) -> dict:
         p = self.p
         eids, coords = [], []
         for a, b in zip(nodes[:-1], nodes[1:]):
@@ -161,12 +177,39 @@ class Router:
             "comfort": round(float(np.average(comfort(cond)[eids_arr], weights=lengths))) if dist > 0 else 100,
             "edges": eids,
             "steps": self._steps(eids, cond),
+            "access": self.access_summary(eids),
         }
         if with_geometry:
             for a in nodes:
                 coords.append(p.node_xy[a])
             out["geometry"] = {"type": "LineString", "coordinates": ring_to_lonlat(coords)}
+        if walk:  # for following it step by step on the phone
+            out["walk_steps"] = self.walk_steps(nodes, cond)
         return out
+
+    def access_summary(self, eids: list[int]) -> dict:
+        """What a wheelchair user meets on this route: barriers (with where they are) and crossings.
+        Consecutive edges of the same kind count once (one flight of steps, one crossing)."""
+        p = self.p
+        counts = {k: 0 for k in ("steps", "kerb", "blocked", "signal", "unmarked")}
+        barriers, rough_m, prev = [], 0.0, ""
+        for e in eids:
+            a = self.acc[e]
+            if a == "rough":
+                rough_m += p.e_len[e]
+            if a in counts and a != prev:
+                counts[a] += 1
+                if a in BARRIERS:
+                    x, y = p.e_coords[e].mean(axis=0)
+                    lon, lat = ring_to_lonlat([(x, y)])[0]
+                    barriers.append({"kind": a, "lon": float(lon), "lat": float(lat), "street": self.labels[e]})
+            prev = a
+        return {
+            "step_free": not barriers,
+            "steps": counts["steps"], "kerbs": counts["kerb"], "blocked": counts["blocked"],
+            "signal_crossings": counts["signal"], "unmarked_crossings": counts["unmarked"],
+            "rough_m": round(rough_m), "barriers": barriers,
+        }
 
     def _steps(self, eids: list[int], cond: Conditions) -> list[dict]:
         """Group consecutive segments by street name into turn-by-turn style steps with side-of-street tips."""

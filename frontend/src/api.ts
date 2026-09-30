@@ -1,5 +1,12 @@
 export type Scenario = { key: string; label: string; note: string; tmax: number };
-export type Stop = { id: string; name: string; kind: "train" | "tram"; lon: number; lat: number };
+/** What's at a stop for someone who can't do steps (OSM; null = not mapped). wheelchair "no" on a tram stop = no level-access platform. */
+export type StopAccess = {
+  wheelchair: "yes" | "limited" | "no" | null;
+  shelter: boolean | null; tactile: boolean | null; realtime: boolean | null;
+  bench?: boolean | null; routes?: string[];
+  code?: string | null; platforms?: number | null; fare_gates?: boolean | null;
+};
+export type Stop = { id: string; name: string; kind: "train" | "tram"; lon: number; lat: number; access: StopAccess };
 export type Office = { id: string; name: string | null; street: string | null; lon: number; lat: number; levels: number };
 export type WindowNode = { id: string; street: string; edge: number; lon: number; lat: number; source: string };
 export type SmartPole = { id: string; address: string; landmark: string; lon: number; lat: number };
@@ -65,8 +72,19 @@ export type Route = {
   geometry: { type: "LineString"; coordinates: [number, number][] };
   vs_shortest: { extra_min: number; sun_min_saved: number; crowd_min_saved: number; comfort_gain: number };
   same_as_shortest: boolean;
+  access: RouteAccess;
 };
-export type RouteResponse = { from: string; to: string; time: string; temp_c: number; heat_factor: number; plan: string | null; routes: Route[] };
+export type Barrier = { kind: "steps" | "kerb" | "blocked"; lon: number; lat: number; street: string };
+export type RouteAccess = {
+  step_free: boolean; steps: number; kerbs: number; blocked: number;
+  signal_crossings: number; unmarked_crossings: number; rough_m: number; barriers: Barrier[];
+};
+export type RouteResponse = {
+  from: string; to: string; time: string; temp_c: number; heat_factor: number; plan: string | null; routes: Route[];
+  step_free: boolean;
+  /** only when step_free: what avoiding steps costs against the plain shortest walk */
+  step_free_vs?: { extra_min: number; avoided_steps: number; avoided_kerbs: number; possible: boolean };
+};
 
 // ------------------------------------------------------------------ what-if
 export type TreeSize = "small" | "medium" | "large";

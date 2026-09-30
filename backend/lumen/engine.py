@@ -218,16 +218,30 @@ class Lumen:
 
     # ------------------------------------------------------------------ routes
     def routes(self, src: str, dst: str, scenario: str, minutes: int, temp: float | None = None,
-               plan: Plan | None = None) -> dict:
+               plan: Plan | None = None, step_free: bool = False, walk: bool = False) -> dict:
         a, a_name = self.resolve(src)
         b, b_name = self.resolve(dst)
         cond = self.conditions(scenario, minutes, temp, plan)
-        return {
+        cond.step_free = step_free
+        routes = self.router.routes(a, b, cond, walk)
+        out = {
             "from": a_name, "to": b_name, "time": fmt_time(minutes), "temp_c": round(cond.temp_c, 1),
             "heat_factor": round(heat_factor(cond.temp_c), 2),
             "plan": plan.key if plan else None,
-            "routes": self.router.routes(a, b, cond),
+            "step_free": step_free,
+            "routes": routes,
         }
+        if step_free:
+            # what going step-free costs: compare with the plain shortest walk
+            cond.step_free = False
+            plain = self.router.route(a, b, "shortest", cond, with_geometry=False)
+            acc = plain["access"]
+            out["step_free_vs"] = {
+                "extra_min": round(routes[0]["minutes"] - plain["minutes"], 1),
+                "avoided_steps": acc["steps"], "avoided_kerbs": acc["kerbs"] + acc["blocked"],
+                "possible": routes[0]["access"]["step_free"],
+            }
+        return out
 
     def street_table(self, scenario: str = "hot") -> list[dict]:
         """Per-street summary for the Hub's weekly report (modelled from the replay)."""

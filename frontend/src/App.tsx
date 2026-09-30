@@ -6,6 +6,7 @@ import {
 import QRCode from "qrcode";
 import MapView, { type EditClick, type LayerToggles } from "./MapView";
 import TimeBar from "./TimeBar";
+import { ACCESS_LEGEND, badgeUrl } from "./accessIcons";
 import RoutePanel from "./panels/RoutePanel";
 import ConsolePanel from "./panels/ConsolePanel";
 import BriefPanel from "./panels/BriefPanel";
@@ -40,7 +41,24 @@ export default function App() {
   const [routes, setRoutes] = useState<RouteResponse | null>(null);
   const [selectedMode, setSelectedMode] = useState("coolest");
   const [pickMode, setPickMode] = useState<"from" | "to" | null>(null);
-  const [toggles, setToggles] = useState<LayerToggles>({ shadows: true, trees: true, network: "shade", buildings3d: false, nodes: true, poles: true });
+  const [toggles, setToggles] = useState<LayerToggles>({ shadows: true, trees: true, network: "shade", buildings3d: false, nodes: true, poles: true, stops: true, access: true });
+  const [stepFree, setStepFreeRaw] = useState(() => {
+    try {
+      return localStorage.getItem("lumen.console.stepFree") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const setStepFree = useCallback((on: boolean) => {
+    setStepFreeRaw(on);
+    // planning step-free is when the ramps, crossings and steps matter: make sure they're on the map
+    if (on) setToggles((t) => (t.access ? t : { ...t, access: true }));
+    try {
+      localStorage.setItem("lumen.console.stepFree", on ? "1" : "0");
+    } catch {
+      /* private mode: remembered for this visit only */
+    }
+  }, []);
   const [loading, setLoading] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   // streets named by the last Ask Lumen answer, valid only for the scenario and time it was asked about
@@ -131,10 +149,10 @@ export default function App() {
 
   useEffect(() => {
     if (!meta || !from || !to) return;
-    get<RouteResponse>(`/api/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&scenario=${scenario}&t=${minutes}${planQ}`)
+    get<RouteResponse>(`/api/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&scenario=${scenario}&t=${minutes}${planQ}${stepFree ? "&step_free=true" : ""}`)
       .then(setRoutes)
       .catch(() => setRoutes(null));
-  }, [meta, from, to, scenario, minutes, planQ]);
+  }, [meta, from, to, scenario, minutes, planQ, stepFree]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -157,6 +175,15 @@ export default function App() {
     },
     [pickMode],
   );
+
+  // a stop's "Start here" / "Go here" (or a click on a stop while picking)
+  const onRouteEnd = useCallback((ref: string, which: "from" | "to") => {
+    if (which === "from") setFrom(ref);
+    else setTo(ref);
+    setPickMode(null);
+    setTab("route");
+    setTool(null);
+  }, []);
 
   const onEdit = useCallback(
     (e: EditClick) => {
@@ -192,8 +219,12 @@ export default function App() {
   // once the time or weather moves on, the answer no longer describes the map
   const shownMarks = marked && marked.scenario === scenario && marked.minutes === minutes ? marked : null;
   const markStreets = useMemo(() => shownMarks?.streets ?? [], [shownMarks]);
+  const barriers = useMemo(
+    () => routes?.routes.find((r) => r.mode === selectedMode)?.access?.barriers ?? [],
+    [routes, selectedMode],
+  );
 
-  if (err) return <div className="fatal"><div><b>Can't reach the Lumen server.</b><br />Start it with <code>python backend/server.py</code>.<br /><small>{err}</small></div></div>;
+  if (err) return <div className="fatal"><div><b>Can't reach the Lumen server.</b><br />It may be restarting. Try reloading in a minute.<br /><small>{err}</small></div></div>;
   if (!meta) return <div className="fatal"><div className="boot"><img src="/lumen.svg" alt="" width={48} height={48} /><span>Lighting up Cremorne…</span></div></div>;
 
   const editing = tab === "whatif" && tool;
@@ -207,6 +238,7 @@ export default function App() {
           overlay={planActive ? whatif?.plan.overlay ?? null : null}
           newShadows={planKey ? whatif?.result.new_shadows ?? null : null}
           changed={changed} sidePad={SIDE} marked={markStreets}
+          barriers={barriers} onRouteEnd={onRouteEnd}
         />
       </main>
 
@@ -235,7 +267,7 @@ export default function App() {
             <RoutePanel
               meta={meta} from={from} to={to} setFrom={setFrom} setTo={setTo} routes={routes}
               selectedMode={selectedMode} setSelectedMode={setSelectedMode} pickMode={pickMode} setPickMode={setPickMode}
-              planActive={!!planKey}
+              planActive={!!planKey} stepFree={stepFree} setStepFree={setStepFree}
             />
           )}
           {tab === "console" && <ConsolePanel meta={meta} state={state} scenario={scenario} />}
@@ -321,9 +353,9 @@ export default function App() {
 
 function LayerBar({ toggles, setToggles }: { toggles: LayerToggles; setToggles: (t: LayerToggles) => void }) {
   const set = (k: keyof LayerToggles, v: LayerToggles[keyof LayerToggles]) => setToggles({ ...toggles, [k]: v });
-  const chips: { k: "shadows" | "trees" | "nodes" | "poles" | "buildings3d"; label: string }[] = [
+  const chips: { k: "shadows" | "trees" | "nodes" | "poles" | "stops" | "access" | "buildings3d"; label: string }[] = [
     { k: "shadows", label: "Shadows" }, { k: "trees", label: "Canopy" }, { k: "nodes", label: "Nodes" },
-    { k: "poles", label: "Poles" }, { k: "buildings3d", label: "3D" },
+    { k: "poles", label: "Poles" }, { k: "stops", label: "Stops" }, { k: "access", label: "Access" }, { k: "buildings3d", label: "3D" },
   ];
   return (
     <div className="layerbar glass">
@@ -343,6 +375,18 @@ function LayerBar({ toggles, setToggles }: { toggles: LayerToggles; setToggles: 
         </div>
       </div>
       <Legend mode={toggles.network} />
+      {toggles.access && <AccessLegend />}
+    </div>
+  );
+}
+
+function AccessLegend() {
+  return (
+    <div className="legend acc">
+      {ACCESS_LEGEND.map((l) => (
+        <span key={l.key}><img src={badgeUrl(l.key)} alt="" width={15} height={15} />{l.label}</span>
+      ))}
+      <small>OpenStreetMap · zoom in for crossings and kerb ramps</small>
     </div>
   );
 }

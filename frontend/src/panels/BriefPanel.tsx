@@ -95,7 +95,7 @@ export default function BriefPanel({ meta, scenario, minutes, office, onShowRout
       </div>
       {brief && (
         <p className="fine">
-          Written by {brief.engine === "template" ? "the deterministic template (no LLM running)" : `a local model (${brief.engine.replace("ollama:", "")}) that never leaves this laptop`}.
+          Written by {brief.engine === "template" ? "the deterministic template (no LLM running)" : `an open-weights model (${brief.engine.replace("ollama:", "")}) on the Lumen server, not a cloud AI`}.
           Every number comes from the backend; LLM output is rejected if any number changes.
         </p>
       )}
