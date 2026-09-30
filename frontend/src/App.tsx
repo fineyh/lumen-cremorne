@@ -275,7 +275,7 @@ export default function App() {
           <span>{meta.stats.buildings.toLocaleString()} buildings</span>
           <span>{meta.stats.trees.toLocaleString()} trees</span>
           <span>{meta.stats.network_km} km paths</span>
-          <span className="ok"><ShieldCheck size={12} /> all on this laptop</span>
+          <span className="ok"><ShieldCheck size={12} /> no cloud AI</span>
         </footer>
       </aside>
 

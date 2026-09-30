@@ -42,7 +42,7 @@ export default function LimitsPanel() {
 
       <h3><Globe2 size={14} /> Sovereignty</h3>
       <ul className="method">
-        <li>Everything runs on this laptop: shadow model, router, crowd model, what-if engine and the open-weights LLM (Ollama). No cloud AI.</li>
+        <li>Everything runs on one self-hosted server: shadow model, router, crowd model and what-if engine. The LLM is open-weights (Ollama) and runs on the same box when installed; the public demo runs without it and uses templates. No cloud AI. In the pilot that server is the mini PC at the Hub.</li>
         <li>The LLM only rewords text. Every number on the phone and in the brief comes from the backend, and a rewrite that changes a number is thrown away.</li>
         <li>SMS gateways are usually overseas (e.g. Twilio). The demo simulates the texts on screen. In production we'd swap in an Australian-hosted SMS gateway, and texts carry only public street-level information.</li>
         <li>Open data only: OpenStreetMap, City of Yarra trees, PTV timetable. Basemap tiles can be self-hosted with Protomaps PMTiles.</li>
