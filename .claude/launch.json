@@ -4,8 +4,21 @@
     {
       "name": "lumen",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["backend/server.py"],
+      "runtimeArgs": [
+        "backend/server.py"
+      ],
       "port": 8000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev"
+      ],
+      "port": 5173
     }
   ]
 }
