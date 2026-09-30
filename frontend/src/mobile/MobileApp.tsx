@@ -95,7 +95,9 @@ export default function MobileApp() {
                 <small>{greet}</small>
                 <h2>{roleTitle(settings.role)}</h2>
               </div>
-              <div className="m-scen">
+              <div className={`m-scen ${scenario === "today" ? "live" : "demo"}`}
+                title={scenario === "today" ? "Today's real forecast" : "Simulated day for the demo, not today's weather"}>
+                <span className="m-scen-tag">{scenario === "today" ? "Live" : "Demo"}</span>
                 <Sun size={13} />
                 <select value={scenario} onChange={(e) => setScenario(e.target.value)} aria-label="Demo day">
                   {SCENARIOS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}

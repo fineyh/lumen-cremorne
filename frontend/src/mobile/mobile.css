@@ -55,6 +55,10 @@ button:disabled { opacity: 0.45; cursor: default; }
 .m-top small { color: var(--ink-3); font-weight: 600; font-size: 12.5px; }
 .m-top h2 { margin: 0; font-size: 23px; letter-spacing: -0.03em; font-weight: 800; }
 .m-scen { display: flex; align-items: center; gap: 4px; background: #fff; border: 1px solid var(--line-2); border-radius: 99px; padding: 4px 6px 4px 10px; color: var(--sun-deep); }
+.m-scen.demo { border-style: dashed; border-color: color-mix(in srgb, var(--sun-deep) 45%, transparent); padding-left: 4px; }
+.m-scen.live { padding-left: 4px; color: var(--good); }
+.m-scen-tag { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1; padding: 4px 6px; border-radius: 99px; background: color-mix(in srgb, var(--sun-deep) 12%, transparent); color: var(--sun-deep); margin-right: 2px; }
+.m-scen.live .m-scen-tag { background: var(--good-bg); color: var(--good); }
 .m-scen select { border: none; background: none; font-size: 12.5px; font-weight: 700; color: var(--ink); outline: none; }
 
 .m-nav { display: flex; justify-content: space-around; padding: 8px 18px calc(10px + env(safe-area-inset-bottom)); background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
