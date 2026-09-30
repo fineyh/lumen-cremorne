@@ -10,6 +10,7 @@ export type LayerToggles = {
   network: "shade" | "crowd" | "comfort" | "off";
   buildings3d: boolean;
   nodes: boolean;
+  poles: boolean;
 };
 
 export type EditClick = { lngLat: [number, number]; treeIndex?: number; itemIndex?: number };
@@ -25,10 +26,6 @@ type Props = {
   to: [number, number] | null;
   pickMode: "from" | "to" | null;
   onPick: (lngLat: [number, number]) => void;
-  liveCount: number;
-  livePerMin: number;
-  liveOnline: boolean;
-  liveFlash: number;
   // what-if
   editTool: Tool | null;
   onEdit: (e: EditClick) => void;
@@ -97,8 +94,7 @@ export default function MapView(p: Props) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const ready = useRef(false);
-  const liveMarker = useRef<maplibregl.Marker | null>(null);
-  const liveEl = useRef<HTMLDivElement | null>(null);
+  const poleEls = useRef<HTMLDivElement[]>([]);
   const fromMarker = useRef<maplibregl.Marker | null>(null);
   const toMarker = useRef<maplibregl.Marker | null>(null);
   const prevChanged = useRef<number[]>([]);
@@ -227,15 +223,22 @@ export default function MapView(p: Props) {
           },
         });
 
-        // live node marker (HTML so it can pulse)
-        const live = propsRef.current.meta.nodes.find((n) => n.live);
-        if (live) {
+        // council smart poles (locations only: their data isn't published)
+        const { sensors, items } = propsRef.current.meta.poles;
+        poleEls.current = items.map((pole) => {
           const d = document.createElement("div");
-          d.className = "live-marker";
-          d.innerHTML = `<div class="ring"></div><div class="dot"></div><div class="lbl"><b>0</b><span>LIVE</span></div>`;
-          liveEl.current = d;
-          liveMarker.current = new maplibregl.Marker({ element: d }).setLngLat([live.lon, live.lat]).addTo(map);
-        }
+          d.className = "pole-marker";
+          d.innerHTML = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 15V3.5a2 2 0 0 1 2-2h3.5M11.5 1.5v3"/><path d="M4 15h4"/></svg>`;
+          const pop = new maplibregl.Popup({ closeButton: false, className: "edge-pop", offset: 14 }).setHTML(
+            `<b>${pole.landmark}</b><div class="pp-row"><span>${pole.address}</span><span>Yarra smart pole</span></div>` +
+              `<div class="pp-row"><span>${sensors.slice(0, 2).join(" · ")}</span></div>` +
+              `<div class="pp-note">Council sensor · data not published</div>`,
+          );
+          d.addEventListener("mouseenter", () => pop.setLngLat([pole.lon, pole.lat]).addTo(map));
+          d.addEventListener("mouseleave", () => pop.remove());
+          new maplibregl.Marker({ element: d }).setLngLat([pole.lon, pole.lat]).addTo(map);
+          return d;
+        });
 
         const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "edge-pop", offset: 10 });
         map.on("mousemove", "network", (e) => {
@@ -341,7 +344,7 @@ export default function MapView(p: Props) {
     map.setPaintProperty("network", "line-width", t.network === "crowd" ? crowdWidth : shadeWidth);
     vis("buildings-3d", t.buildings3d);
     vis("buildings-flat", !t.buildings3d);
-    if (liveEl.current) liveEl.current.style.display = t.nodes ? "" : "none";
+    for (const d of poleEls.current) d.style.display = t.poles ? "" : "none";
   }
 
   function applyShadows() {
@@ -379,7 +382,6 @@ export default function MapView(p: Props) {
     (map.getSource("nodes") as GeoJSONSource).setData({
       type: "FeatureCollection",
       features: st.nodes
-        .filter((n) => !n.live)
         .map((n) => ({
           type: "Feature",
           properties: { id: n.id, color: LOS_COLORS[LOS.indexOf(n.los)] },
@@ -433,7 +435,6 @@ export default function MapView(p: Props) {
     applyNodes();
     applyEndpoints();
     fitRoutes();
-    applyLive();
   }
 
   useEffect(applyEdges, [p.state]);
@@ -456,19 +457,6 @@ export default function MapView(p: Props) {
     if (map) map.getCanvas().style.cursor = cursorFor();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.pickMode, p.editTool]);
-
-  function applyLive() {
-    const d = liveEl.current;
-    const { liveCount, liveOnline, liveFlash } = propsRef.current;
-    if (!d) return;
-    const b = d.querySelector(".lbl b");
-    if (b) b.textContent = String(liveCount);
-    d.classList.toggle("offline", !liveOnline);
-    d.classList.remove("flash");
-    void d.offsetWidth; // restart the ripple animation
-    if (liveFlash) d.classList.add("flash");
-  }
-  useEffect(applyLive, [p.liveCount, p.liveFlash, p.liveOnline]);
 
   return <div ref={el} className="map" />;
 }

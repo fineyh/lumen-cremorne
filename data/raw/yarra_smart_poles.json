@@ -1,0 +1,13 @@
+{
+  "source": "City of Yarra, Cremorne digital infrastructure project page (archived 2025-12-06): https://web.archive.org/web/20251206115530/https://www.yarracity.vic.gov.au/planning-and-building/our-projects-and-initiatives/smart-technology-and-innovation/cremorne-digital-infrastructure-project",
+  "note": "Six ENE.HUB smart poles funded by a $1M Victorian Government grant. Coordinates geocoded from the published street addresses with OSM Nominatim (approximate: the building frontage, not the pole). Sensor data is not published; it sits on ENE.HUB's data platform.",
+  "sensors": ["Pedestrian, bicycle and vehicle counts", "Air quality, pollen, particle dust and CO2", "Free public Wi-Fi", "LED street lighting"],
+  "poles": [
+    {"id": "pole-1", "address": "60 Swan Street", "landmark": "Precinct Hotel", "lat": -37.8251306, "lon": 144.9913448},
+    {"id": "pole-2", "address": "60-88 Cremorne Street", "landmark": "SEEK", "lat": -37.8273818, "lon": 144.9902958},
+    {"id": "pole-3", "address": "85 Cremorne Street", "landmark": "Bendigo Kangan Institute", "lat": -37.8274816, "lon": 144.9913024},
+    {"id": "pole-4", "address": "168 Cremorne Street", "landmark": "MYOB", "lat": -37.8304209, "lon": 144.9900444},
+    {"id": "pole-5", "address": "53 Balmain Street", "landmark": "Cherry Tree Hotel", "lat": -37.8299458, "lon": 144.9932039},
+    {"id": "pole-6", "address": "80 Balmain Street", "landmark": "Cremorne Digital Hub", "lat": -37.8303616, "lon": 144.994553}
+  ]
+}

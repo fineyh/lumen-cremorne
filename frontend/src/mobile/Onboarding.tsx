@@ -25,7 +25,7 @@ export default function Onboarding({ meta, initial, presetRole, onDone, onReset 
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS({ ...s, [k]: v });
   const stops = meta.stops.filter((x) => MAIN_STOPS.includes(x.id));
   const offices = meta.offices.filter((o) => o.name && /[A-Za-z]{3}/.test(o.name));
-  const nodes = meta.nodes.filter((n) => !n.live);
+  const nodes = meta.nodes;
 
   if (step === 0)
     return (

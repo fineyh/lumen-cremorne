@@ -25,8 +25,6 @@ const TABS: { key: Tab; label: string; icon: typeof RouteIcon }[] = [
 ];
 const SIDE = 412;
 
-export type Live = { total: number; perMin: number; online: boolean; flash: number; temp?: number; noise?: number };
-
 export default function App() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -40,8 +38,7 @@ export default function App() {
   const [routes, setRoutes] = useState<RouteResponse | null>(null);
   const [selectedMode, setSelectedMode] = useState("coolest");
   const [pickMode, setPickMode] = useState<"from" | "to" | null>(null);
-  const [toggles, setToggles] = useState<LayerToggles>({ shadows: true, trees: true, network: "shade", buildings3d: false, nodes: true });
-  const [live, setLive] = useState<Live>({ total: 0, perMin: 0, online: false, flash: 0 });
+  const [toggles, setToggles] = useState<LayerToggles>({ shadows: true, trees: true, network: "shade", buildings3d: false, nodes: true, poles: true });
   const [loading, setLoading] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   // what-if
@@ -52,7 +49,6 @@ export default function App() {
   const [whatif, setWhatif] = useState<WhatIfResponse | null>(null);
   const [whatifBusy, setWhatifBusy] = useState(false);
   const [showAfter, setShowAfter] = useState(true);
-  const liveNodeId = meta?.nodes.find((n) => n.live)?.id ?? "node-00";
 
   const draftRef = useRef(draft);
   const setDraft = useCallback((d: Draft | ((d: Draft) => Draft)) => {
@@ -136,33 +132,6 @@ export default function App() {
       .catch(() => setRoutes(null));
   }, [meta, from, to, scenario, minutes, planQ]);
 
-  // ------------------------------------------------------------------ live node (SSE)
-  useEffect(() => {
-    if (!meta) return;
-    const es = new EventSource("/api/live/stream");
-    es.onmessage = (ev) => {
-      const d = JSON.parse(ev.data);
-      if (d.type === "snapshot") {
-        const n = d.nodes[liveNodeId];
-        if (n) setLive({ total: n.in + n.out, perMin: n.per_min, online: n.online, flash: 0, temp: n.temp_c, noise: n.noise_db });
-      } else if (d.type === "reading" && d.node_id === liveNodeId) {
-        setLive((l) => ({ total: d.in + d.out, perMin: d.per_min, online: true, flash: l.flash + 1, temp: d.temp_c, noise: d.noise_db }));
-      } else if (d.type === "reset") {
-        setLive({ total: 0, perMin: 0, online: false, flash: 0 });
-      }
-    };
-    const t = setInterval(() => {
-      get<Record<string, { online: boolean; per_min: number }>>("/api/live/state", false).then((s) => {
-        const n = s[liveNodeId];
-        setLive((l) => ({ ...l, online: !!n?.online, perMin: n?.per_min ?? 0 }));
-      }).catch(() => undefined);
-    }, 5000);
-    return () => {
-      es.close();
-      clearInterval(t);
-    };
-  }, [meta, liveNodeId]);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -227,7 +196,6 @@ export default function App() {
         <MapView
           meta={meta} state={state} shadows={shadows} routes={routes?.routes ?? []} selectedMode={selectedMode}
           toggles={toggles} from={fromPos} to={toPos} pickMode={pickMode} onPick={onPick}
-          liveCount={live.total} livePerMin={live.perMin} liveOnline={live.online} liveFlash={live.flash}
           editTool={editing ? tool : null} onEdit={onEdit}
           overlay={planActive ? whatif?.plan.overlay ?? null : null}
           newShadows={planKey ? whatif?.result.new_shadows ?? null : null}
@@ -263,7 +231,7 @@ export default function App() {
               planActive={!!planKey}
             />
           )}
-          {tab === "console" && <ConsolePanel meta={meta} state={state} live={live} liveNodeId={liveNodeId} scenario={scenario} />}
+          {tab === "console" && <ConsolePanel meta={meta} state={state} scenario={scenario} />}
           {tab === "whatif" && (
             <WhatIfPanel
               meta={meta} draft={draft} setDraft={setDraft} undo={undo} canUndo={history.length > 0}
@@ -316,7 +284,6 @@ export default function App() {
           <MousePointerClick size={15} /> {TOOL_INFO[tool].hint(treeSize)} <kbd>Esc</kbd> <button onClick={() => setTool(null)}>Done</button>
         </div>
       )}
-      <LiveCard live={live} />
       <TimeBar
         scenarios={meta.scenarios} scenario={scenario} setScenario={setScenario}
         minutes={minutes} setMinutes={setMinutes} state={state} loading={loading}
@@ -328,8 +295,9 @@ export default function App() {
 
 function LayerBar({ toggles, setToggles }: { toggles: LayerToggles; setToggles: (t: LayerToggles) => void }) {
   const set = (k: keyof LayerToggles, v: LayerToggles[keyof LayerToggles]) => setToggles({ ...toggles, [k]: v });
-  const chips: { k: "shadows" | "trees" | "nodes" | "buildings3d"; label: string }[] = [
-    { k: "shadows", label: "Shadows" }, { k: "trees", label: "Canopy" }, { k: "nodes", label: "Nodes" }, { k: "buildings3d", label: "3D" },
+  const chips: { k: "shadows" | "trees" | "nodes" | "poles" | "buildings3d"; label: string }[] = [
+    { k: "shadows", label: "Shadows" }, { k: "trees", label: "Canopy" }, { k: "nodes", label: "Nodes" },
+    { k: "poles", label: "Poles" }, { k: "buildings3d", label: "3D" },
   ];
   return (
     <div className="layerbar glass">
@@ -376,22 +344,6 @@ function Legend({ mode }: { mode: LayerToggles["network"] }) {
       </div>
     );
   return null;
-}
-
-function LiveCard({ live }: { live: Live }) {
-  return (
-    <div className={`live-card ${live.online ? "on" : ""}`}>
-      <div className="live-head">
-        <span className="dot" /> node-00 · Cremorne St <b>{live.online ? "LIVE" : "waiting"}</b>
-      </div>
-      <div className="live-num" key={live.flash}>{live.total}</div>
-      <div className="live-sub">
-        passers-by · {live.perMin.toFixed(0)}/min
-        {live.temp != null && <> · {live.temp}°C</>}
-        {live.noise != null && <> · {live.noise} dB</>}
-      </div>
-    </div>
-  );
 }
 
 function PhoneModal({ meta, onClose }: { meta: Meta; onClose: () => void }) {

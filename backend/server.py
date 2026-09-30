@@ -58,6 +58,8 @@ STATIC = {
                      ("trees", lumen.trees_geojson))
 }
 EVAL: dict = {}
+# Council smart poles: locations only; their sensor data isn't published.
+POLES = json.loads((ROOT / "data" / "raw" / "yarra_smart_poles.json").read_text(encoding="utf-8"))
 
 
 def _warm():
@@ -120,6 +122,7 @@ def meta():
         "stops": [{k: s[k] for k in ("id", "name", "kind", "lon", "lat")} for s in p.stops],
         "offices": [{k: o[k] for k in ("id", "name", "street", "lon", "lat", "levels")} for o in offices],
         "nodes": lumen.crowd.nodes,
+        "poles": {"sensors": POLES["sensors"], "items": POLES["poles"]},
         "center": [144.9942, -37.8282],
         "stats": {
             "buildings": len(p.buildings), "trees": int(len(p.tree_xy)),

@@ -1,7 +1,8 @@
 export type Scenario = { key: string; label: string; note: string; tmax: number };
 export type Stop = { id: string; name: string; kind: "train" | "tram"; lon: number; lat: number };
 export type Office = { id: string; name: string | null; street: string | null; lon: number; lat: number; levels: number };
-export type WindowNode = { id: string; street: string; edge: number; lon: number; lat: number; live: boolean; source: string };
+export type WindowNode = { id: string; street: string; edge: number; lon: number; lat: number; source: string };
+export type SmartPole = { id: string; address: string; landmark: string; lon: number; lat: number };
 
 export type Meta = {
   scenarios: Scenario[];
@@ -9,6 +10,7 @@ export type Meta = {
   stops: Stop[];
   offices: Office[];
   nodes: WindowNode[];
+  poles: { sensors: string[]; items: SmartPole[] };
   center: [number, number];
   stats: { buildings: number; trees: number; segments: number; network_km: number };
   llm: string | null;

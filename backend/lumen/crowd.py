@@ -11,7 +11,7 @@ flow(edge, t) = sum over stops of  outflow(stop, t) x share(stop, edge)   <- arr
   by the workplace's floor area.
 * LOS: flow per metre of *effective* footpath width (clear width minus 0.3 m shy distance each side).
 
-Everything here is a heuristic, and the replayed window-node readings are synthetic. The UI labels
+Everything here is a heuristic, and the window-node readings are replayed (synthetic). The UI labels
 them that way.
 """
 from __future__ import annotations
@@ -49,6 +49,7 @@ BACKGROUND = {  # people per minute, both directions, at activity = 1
     "cycleway": 1.0, "steps": 1.0, "secondary_link": 3, "tertiary_link": 2,
 }
 MAIN_STREETS = {"Swan Street", "Church Street", "Cremorne Street", "Punt Road", "Balmain Street"}
+NODE_SPACING = 60.0  # metres; replayed nodes closer than this would draw on top of each other
 
 
 def _gauss(t, mu, sigma):
@@ -144,45 +145,50 @@ class CrowdModel:
     def _place_window_nodes(self) -> list[dict]:
         """Put replayed nodes on the busiest segment of each street we'd pilot on.
 
-        Node 00 is the physical node at the demo; it is anchored at the Richmond-station end of
-        Cremorne Street so the live count feeds the pinch point everyone asks about.
+        Node 00 sits at the Richmond-station end of Cremorne Street, the pinch point everyone asks about.
         """
         p = self.p
         peak = self.frame_no_nodes(525)
         sites = [
-            ("node-00", "Cremorne Street", "north", True),
-            ("node-01", "Cremorne Street", "south", False),
-            ("node-02", "Church Street", "busiest", False),
-            ("node-03", "Swan Street", "busiest", False),
-            ("node-04", "Balmain Street", "busiest", False),
-            ("node-05", "Stephenson Street", "busiest", False),
-            ("node-06", "Dover Street", "busiest", False),
-            ("node-07", "Chestnut Street", "busiest", False),
-            ("node-08", "Gwynne Street", "busiest", False),
-            ("node-09", "Cubitt Street", "busiest", False),
-            ("node-10", "Kipling Street", "busiest", False),
-            ("node-11", "Balmain Street", "west", False),
-            ("node-12", "Church Street", "south", False),
+            ("node-00", "Cremorne Street", "north"),
+            ("node-01", "Cremorne Street", "south"),
+            ("node-02", "Church Street", "busiest"),
+            ("node-03", "Swan Street", "busiest"),
+            ("node-04", "Balmain Street", "busiest"),
+            ("node-05", "Stephenson Street", "busiest"),
+            ("node-06", "Dover Street", "busiest"),
+            ("node-07", "Chestnut Street", "busiest"),
+            ("node-08", "Gwynne Street", "busiest"),
+            ("node-09", "Cubitt Street", "busiest"),
+            ("node-10", "Kipling Street", "busiest"),
+            ("node-11", "Balmain Street", "west"),
+            ("node-12", "Church Street", "south"),
         ]
-        out = []
-        for nid, street, how, live in sites:
+        out, placed = [], []
+        for nid, street, how in sites:
             idx = [i for i, n in enumerate(p.e_name) if n == street and p.cremorne.contains(_pt(p, i))]
             if not idx:
                 continue
-            if how == "busiest":
-                i = max(idx, key=lambda k: peak[k])
-            else:
-                ys = [p.e_coords[k].mean(axis=0)[1] for k in idx]
-                if how == "west":
-                    ys = [-p.e_coords[k].mean(axis=0)[0] for k in idx]
-                i = idx[int(np.argmax(ys) if how in ("north", "west") else np.argmin(ys))]
-            x, y = p.e_coords[i].mean(axis=0)
+            mid = {k: p.e_coords[k].mean(axis=0) for k in idx}
+            rank = {
+                "busiest": lambda k: -peak[k],
+                "north": lambda k: -mid[k][1],
+                "south": lambda k: mid[k][1],
+                "west": lambda k: mid[k][0],
+            }[how]
+            # take the best-ranked segment that isn't on top of a node already placed (e.g. two
+            # streets' ends meeting at the same corner, or "busiest" and "west" picking one segment)
+            ranked = sorted(idx, key=rank)
+            i = next((k for k in ranked
+                      if all(math.hypot(*(mid[k] - q)) >= NODE_SPACING for q in placed)), ranked[0])
+            placed.append(mid[i])
+            x, y = mid[i]
             from .geo import to_lonlat
 
             lon, lat = to_lonlat(x, y)
             out.append({
                 "id": nid, "street": street, "edge": int(i), "lon": float(lon), "lat": float(lat),
-                "live": live, "source": "live" if live else "replayed",
+                "source": "replayed",
             })
         return out
 

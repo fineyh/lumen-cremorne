@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Download, Sun, TrainFront, Users } from "lucide-react";
 import { LOS, LOS_COLORS, fmtTime, get, type Meta, type State, type StreetRow } from "../api";
-import type { Live } from "../App";
 
-type Props = { meta: Meta; state: State | null; live: Live; liveNodeId: string; scenario: string };
+type Props = { meta: Meta; state: State | null; scenario: string };
 
-export default function ConsolePanel({ meta, state, live, liveNodeId, scenario }: Props) {
+export default function ConsolePanel({ meta, state, scenario }: Props) {
   const [nodeId, setNodeId] = useState("node-04");
   const [profile, setProfile] = useState<{ hour: number; people: number }[]>([]);
   const [report, setReport] = useState<StreetRow[]>([]);
@@ -74,11 +73,7 @@ export default function ConsolePanel({ meta, state, live, liveNodeId, scenario }
                 <tr><th>node</th><th>street</th><th>ppl/min</th><th>LOS</th><th>°C</th><th>dB</th></tr>
               </thead>
               <tbody>
-                <tr className="live-row">
-                  <td>{liveNodeId}</td><td>Cremorne St</td>
-                  <td>{live.online ? live.perMin.toFixed(0) : "–"}</td><td colSpan={3}><span className={`tag ${live.online ? "live" : ""}`}>{live.online ? "live" : "offline"}</span> {live.total} counted</td>
-                </tr>
-                {state.nodes.filter((n) => !n.live).map((n) => (
+                {state.nodes.map((n) => (
                   <tr key={n.id} onClick={() => { setNodeId(n.id); setView("tenant"); }}>
                     <td>{n.id}</td><td>{n.street.replace(" Street", " St")}</td><td>{n.ppm.toFixed(0)}</td>
                     <td><b className="los" style={{ background: LOS_COLORS[LOS.indexOf(n.los)] }}>{n.los}</b></td>
@@ -87,7 +82,7 @@ export default function ConsolePanel({ meta, state, live, liveNodeId, scenario }
                 ))}
               </tbody>
             </table>
-            <p className="fine"><span className="tag">replayed</span> rows are synthetic readings generated from the model, labelled that way on purpose. Only node-00 is a real sensor.</p>
+            <p className="fine"><span className="tag">replayed</span> All rows are synthetic readings generated from the model, labelled that way on purpose. No node is deployed yet.</p>
           </section>
           <section>
             <h3>Weekly evidence for council</h3>
@@ -112,7 +107,7 @@ export default function ConsolePanel({ meta, state, live, liveNodeId, scenario }
         <section>
           <h3>Foot traffic outside your window</h3>
           <select value={nodeId} onChange={(e) => setNodeId(e.target.value)}>
-            {meta.nodes.filter((n) => !n.live).map((n) => (
+            {meta.nodes.map((n) => (
               <option key={n.id} value={n.id}>{n.id} · {n.street}</option>
             ))}
           </select>
