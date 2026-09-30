@@ -7,7 +7,7 @@ type Props = {
   minutes: number;
   office: string;
   onShowRoute: (a: NonNullable<AskAnswer["action"]>) => void;
-  onShowTime: (m: number) => void;
+  onAnswer: (a: NonNullable<AskAnswer["action"]>) => void;
 };
 
 type Msg = { who: "me" | "lumen"; text: string; action?: AskAnswer["action"]; engine?: string };
@@ -27,7 +27,7 @@ function md(text: string) {
   );
 }
 
-export default function BriefPanel({ meta, scenario, minutes, office, onShowRoute, onShowTime }: Props) {
+export default function BriefPanel({ meta, scenario, minutes, office, onShowRoute, onAnswer }: Props) {
   const [brief, setBrief] = useState<Brief | null>(null);
   const [officeId, setOfficeId] = useState(office.includes(",") ? meta.offices[0].id : office);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -53,7 +53,7 @@ export default function BriefPanel({ meta, scenario, minutes, office, onShowRout
     try {
       const a = await post<AskAnswer>("/api/ask", { question, scenario, t: minutes, office: officeId });
       setMsgs((m) => [...m, { who: "lumen", text: a.answer, action: a.action, engine: a.engine }]);
-      if (a.action && a.action.type !== "route") onShowTime(a.action.minutes);
+      if (a.action && a.action.type !== "route") onAnswer(a.action);
     } catch {
       setMsgs((m) => [...m, { who: "lumen", text: "Sorry, I couldn't reach the precinct model." }]);
     } finally {

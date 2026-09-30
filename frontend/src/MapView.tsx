@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { ExpressionSpecification, GeoJSONSource, MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { LOS, LOS_COLORS, LOS_TEXT, MODE_COLORS, get, type Meta, type Route, type State, type Tool } from "./api";
+import { LOS, LOS_COLORS, LOS_TEXT, MODE_COLORS, get, type MarkedStreet, type Meta, type Route, type State, type Tool } from "./api";
 
 export type LayerToggles = {
   shadows: boolean;
@@ -33,6 +33,8 @@ type Props = {
   newShadows: GeoJSON.FeatureCollection | null;
   changed: [number, number][];
   sidePad: number;
+  // Ask Lumen: streets the answer names
+  marked: MarkedStreet[];
 };
 
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -84,6 +86,8 @@ const crowdWidth: ExpressionSpecification = [
   14, ["+", 1, ["*", 0.8, ["coalesce", ["feature-state", "los"], 0]]],
   17, ["+", 2.5, ["*", 2, ["coalesce", ["feature-state", "los"], 0]]],
 ];
+// halo colours sit apart from both the shade ramp and the LOS greens and reds
+const MARK_COLORS: Record<MarkedStreet["tone"], string> = { busy: "#be123c", quiet: "#2563eb", hot: "#dc2626" };
 const diffOpacity: ExpressionSpecification = ["case", [">", ["abs", ["coalesce", ["feature-state", "delta"], 0]], 0.01], 0.95, 0];
 const diffColor: ExpressionSpecification = [
   "interpolate", ["linear"], ["coalesce", ["feature-state", "delta"], 0],
@@ -98,6 +102,8 @@ export default function MapView(p: Props) {
   const fromMarker = useRef<maplibregl.Marker | null>(null);
   const toMarker = useRef<maplibregl.Marker | null>(null);
   const prevChanged = useRef<number[]>([]);
+  const networkFc = useRef<GeoJSON.FeatureCollection | null>(null);
+  const markTags = useRef<maplibregl.Marker[]>([]);
   const propsRef = useRef(p);
   propsRef.current = p;
 
@@ -134,6 +140,7 @@ export default function MapView(p: Props) {
         }
         const [network, buildings, trees] = await layers;
         if (cancelled) return;
+        networkFc.current = network;
         map.addSource("shadows", { type: "geojson", data: EMPTY });
         map.addSource("wi-shadows", { type: "geojson", data: EMPTY });
         map.addSource("network", { type: "geojson", data: network });
@@ -151,6 +158,12 @@ export default function MapView(p: Props) {
             "circle-color": "#3f8f4f", "circle-opacity": 0.32, "circle-stroke-width": 0,
             "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 14, ["*", ["get", "r"], 0.25], 18, ["*", ["get", "r"], 4]],
           },
+        });
+        // Ask Lumen: a halo under the streets an answer names, so the layer colour stays readable on top
+        map.addLayer({
+          id: "marked", type: "line", source: "network", filter: ["==", ["get", "id"], -1],
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#000", "line-width": ["interpolate", ["linear"], ["zoom"], 14, 7, 17, 18], "line-opacity": 0.5, "line-blur": 1 },
         });
         map.addLayer({
           id: "network", type: "line", source: "network",
@@ -425,6 +438,47 @@ export default function MapView(p: Props) {
     map.fitBounds(b, { padding: { top: 110, bottom: 190, left: propsRef.current.sidePad + 40, right: 120 }, maxZoom: 17, duration: 900 });
   }
 
+  function applyMarked() {
+    const map = mapRef.current;
+    const fc = networkFc.current;
+    if (!map || !ready.current || !fc) return;
+    for (const m of markTags.current) m.remove();
+    markTags.current = [];
+    const marked = propsRef.current.marked;
+    if (!marked.length) {
+      map.setFilter("marked", ["==", ["get", "id"], -1]);
+      return;
+    }
+    const names = marked.map((m) => m.name);
+    map.setFilter("marked", ["all", ["get", "inside"], ["in", ["get", "name"], ["literal", names]]]);
+    // (built at runtime, so TypeScript can't see the match has at least one label/value pair)
+    const color = ["match", ["get", "name"], ...marked.flatMap((m) => [m.name, MARK_COLORS[m.tone]]), "#000"] as unknown as ExpressionSpecification;
+    map.setPaintProperty("marked", "line-color", color);
+
+    // name tag at the middle of each street's longest piece, and frame them all
+    const b = new maplibregl.LngLatBounds();
+    for (const m of marked) {
+      let best: number[][] | null = null;
+      let bestLen = 0;
+      for (const f of fc.features) {
+        if (f.properties?.name !== m.name || !f.properties?.inside) continue;
+        const cs = (f.geometry as GeoJSON.LineString).coordinates;
+        for (const c of cs) b.extend(c as [number, number]);
+        let len = 0;
+        for (let i = 1; i < cs.length; i++) len += Math.hypot(cs[i][0] - cs[i - 1][0], cs[i][1] - cs[i - 1][1]);
+        if (len > bestLen) { bestLen = len; best = cs; }
+      }
+      if (!best) continue;
+      const d = document.createElement("div");
+      d.className = `street-tag ${m.tone}`;
+      d.textContent = m.name;
+      markTags.current.push(new maplibregl.Marker({ element: d }).setLngLat(best[Math.floor(best.length / 2)] as [number, number]).addTo(map));
+    }
+    if (!b.isEmpty()) {
+      map.fitBounds(b, { padding: { top: 140, bottom: 190, left: propsRef.current.sidePad + 60, right: 140 }, maxZoom: 16.8, duration: 900 });
+    }
+  }
+
   function applyAll() {
     applyToggles();
     applyEdges();
@@ -435,6 +489,7 @@ export default function MapView(p: Props) {
     applyNodes();
     applyEndpoints();
     fitRoutes();
+    applyMarked();
   }
 
   useEffect(applyEdges, [p.state]);
@@ -444,6 +499,7 @@ export default function MapView(p: Props) {
   useEffect(applyDiff, [p.changed]);
   useEffect(applyRoutes, [p.routes, p.selectedMode]);
   useEffect(applyEndpoints, [p.from, p.to]);
+  useEffect(applyMarked, [p.marked]);
 
   useEffect(fitRoutes, [p.routes]);
   useEffect(() => {

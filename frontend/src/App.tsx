@@ -12,7 +12,9 @@ import BriefPanel from "./panels/BriefPanel";
 import ImpactPanel from "./panels/ImpactPanel";
 import LimitsPanel from "./panels/LimitsPanel";
 import WhatIfPanel, { TOOL_INFO } from "./panels/WhatIfPanel";
-import { get, post, type Draft, type Meta, type RouteResponse, type State, type Tool, type TreeSize, type WhatIfResponse } from "./api";
+import {
+  fmtTime, get, post, type Draft, type MarkedStreet, type Meta, type RouteResponse, type State, type Tool, type TreeSize, type WhatIfResponse,
+} from "./api";
 
 type Tab = "route" | "console" | "whatif" | "brief" | "impact" | "limits";
 const TABS: { key: Tab; label: string; icon: typeof RouteIcon }[] = [
@@ -41,6 +43,8 @@ export default function App() {
   const [toggles, setToggles] = useState<LayerToggles>({ shadows: true, trees: true, network: "shade", buildings3d: false, nodes: true, poles: true });
   const [loading, setLoading] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
+  // streets named by the last Ask Lumen answer, valid only for the scenario and time it was asked about
+  const [marked, setMarked] = useState<{ kind: string; scenario: string; minutes: number; streets: MarkedStreet[] } | null>(null);
   // what-if
   const [draft, setDraftRaw] = useState<Draft>({ items: [], years: 1 });
   const [history, setHistory] = useState<Draft[]>([]);
@@ -185,6 +189,9 @@ export default function App() {
   const fromPos = useMemo(() => pos(from), [pos, from]);
   const toPos = useMemo(() => pos(to), [pos, to]);
   const changed = useMemo(() => (planKey && whatif?.result.edges?.changed) || [], [planKey, whatif]);
+  // once the time or weather moves on, the answer no longer describes the map
+  const shownMarks = marked && marked.scenario === scenario && marked.minutes === minutes ? marked : null;
+  const markStreets = useMemo(() => shownMarks?.streets ?? [], [shownMarks]);
 
   if (err) return <div className="fatal"><div><b>Can't reach the Lumen server.</b><br />Start it with <code>python backend/server.py</code>.<br /><small>{err}</small></div></div>;
   if (!meta) return <div className="fatal"><div className="boot"><img src="/lumen.svg" alt="" width={48} height={48} /><span>Lighting up Cremorne…</span></div></div>;
@@ -199,7 +206,7 @@ export default function App() {
           editTool={editing ? tool : null} onEdit={onEdit}
           overlay={planActive ? whatif?.plan.overlay ?? null : null}
           newShadows={planKey ? whatif?.result.new_shadows ?? null : null}
-          changed={changed} sidePad={SIDE}
+          changed={changed} sidePad={SIDE} marked={markStreets}
         />
       </main>
 
@@ -248,9 +255,17 @@ export default function App() {
                 if (a.to) setTo(a.to);
                 if (a.mode) setSelectedMode(a.mode);
                 setMinutes(a.minutes);
+                setMarked(null);
                 setTab("route");
               }}
-              onShowTime={(m) => setMinutes(m)}
+              onAnswer={(a) => {
+                setMinutes(a.minutes);
+                // show the layer the answer is about: crowding for crowd questions, shade for heat
+                if (a.type === "crowd" || a.type === "hotspots") {
+                  setToggles((t) => ({ ...t, network: a.type === "crowd" ? "crowd" : "shade" }));
+                }
+                setMarked(a.streets?.length ? { kind: a.type, scenario, minutes: a.minutes, streets: a.streets } : null);
+              }}
             />
           )}
           {tab === "impact" && <ImpactPanel onShow={(sc, m) => { setScenario(sc); setMinutes(m); setTab("route"); }} />}
@@ -274,6 +289,17 @@ export default function App() {
             <button className={!showAfter ? "on" : ""} onClick={() => setShowAfter(false)}><EyeOff size={13} /> Before</button>
             <button className={showAfter ? "on" : ""} onClick={() => setShowAfter(true)}><Eye size={13} /> After</button>
           </div>
+        </div>
+      )}
+      {shownMarks && (
+        <div className={`ask-banner glass${planActive ? " below-plan" : ""}`}>
+          <MessageSquareText size={15} />
+          {shownMarks.kind === "crowd" ? (
+            <span><b>Ask Lumen</b> · {fmtTime(shownMarks.minutes)} · <i className="mk busy" /> busiest <i className="mk quiet" /> quietest</span>
+          ) : (
+            <span><b>Ask Lumen</b> · {fmtTime(shownMarks.minutes)} · <i className="mk hot" /> most walked in the sun</span>
+          )}
+          <button className="icon-btn" onClick={() => setMarked(null)} title="Clear"><X size={14} /></button>
         </div>
       )}
       {pickMode && (

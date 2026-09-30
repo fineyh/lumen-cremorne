@@ -259,10 +259,13 @@ def tool_get_crowd(lumen, scenario, minutes, time=None, question="", **_):
         s = streets.setdefault(name, [0.0, 0.0])
         s[0] += float(cond.crowd.per_m[i]) * lumen.p.e_len[i]; s[1] += lumen.p.e_len[i]
     avg = sorted(((v[0] / v[1], k) for k, v in streets.items() if v[1] > 80))
-    quiet = ", ".join(k for _, k in avg[:3])
-    busy = ", ".join(f"{k} ({v:.0f} ppl/min/m)" for v, k in avg[::-1][:3])
+    quiet_top, busy_top = avg[:3], avg[::-1][:3]
+    quiet = ", ".join(k for _, k in quiet_top)
+    busy = ", ".join(f"{k} ({v:.0f} ppl/min/m)" for v, k in busy_top)
+    # the map outlines the streets the answer names
+    marked = [{"name": k, "tone": "busy"} for _, k in busy_top] + [{"name": k, "tone": "quiet"} for _, k in quiet_top]
     return (f"Around {fmt_time(t)}: busiest are {busy}. Quietest are {quiet}. "
-            f"(Modelled from window-node replay and train arrivals.)"), {"type": "crowd", "minutes": t}
+            f"(Modelled from window-node replay and train arrivals.)"), {"type": "crowd", "minutes": t, "streets": marked}
 
 
 def tool_get_hotspots(lumen, scenario, minutes, time=None, question="", **_):
@@ -271,9 +274,10 @@ def tool_get_hotspots(lumen, scenario, minutes, time=None, question="", **_):
     h = lumen.hotspots(cond, n=3)
     hot = ", ".join(f"{x['street']} ({x['sunlit_pct']}% sunlit)" for x in h["hot"])
     if not cond.shade.sun_up:
-        return f"At {fmt_time(t)} the sun is down, so heat exposure is not an issue.", {"type": "hotspots", "minutes": t}
+        return f"At {fmt_time(t)} the sun is down, so heat exposure is not an issue.", {"type": "hotspots", "minutes": t, "streets": []}
+    marked = [{"name": x["street"], "tone": "hot"} for x in h["hot"]]
     return (f"At {fmt_time(t)} ({cond.temp_c:.0f}°C) most people are walking in the sun on {hot}. "
-            f"Busiest: {h['crowded'][0]['street']} (LOS {h['crowded'][0]['los']})."), {"type": "hotspots", "minutes": t}
+            f"Busiest: {h['crowded'][0]['street']} (LOS {h['crowded'][0]['los']})."), {"type": "hotspots", "minutes": t, "streets": marked}
 
 
 def ask(lumen: Lumen, question: str, scenario: str, minutes: int, office_id: str) -> dict:

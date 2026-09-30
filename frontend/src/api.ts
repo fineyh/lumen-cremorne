@@ -165,8 +165,11 @@ export type AskAnswer = {
   answer: string;
   tool: string | null;
   engine: string;
-  action: null | { type: string; from?: string; to?: string; mode?: string; minutes: number };
+  action: null | { type: string; from?: string; to?: string; mode?: string; minutes: number; streets?: MarkedStreet[] };
 };
+
+// streets an Ask Lumen answer names, outlined on the map
+export type MarkedStreet = { name: string; tone: "busy" | "quiet" | "hot" };
 
 export type EvalCase = {
   key: string;
