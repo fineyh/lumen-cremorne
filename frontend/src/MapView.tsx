@@ -1,16 +1,18 @@
 import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
-import type { ExpressionSpecification, GeoJSONSource, StyleSpecification } from "maplibre-gl";
+import type { ExpressionSpecification, GeoJSONSource, MapMouseEvent, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { LOS, LOS_COLORS, LOS_TEXT, MODE_COLORS, get, type Meta, type Route, type State } from "./api";
+import { LOS, LOS_COLORS, LOS_TEXT, MODE_COLORS, get, type Meta, type Route, type State, type Tool } from "./api";
 
 export type LayerToggles = {
   shadows: boolean;
   trees: boolean;
-  network: "shade" | "crowd" | "off";
+  network: "shade" | "crowd" | "comfort" | "off";
   buildings3d: boolean;
   nodes: boolean;
 };
+
+export type EditClick = { lngLat: [number, number]; treeIndex?: number; itemIndex?: number };
 
 type Props = {
   meta: Meta;
@@ -27,6 +29,13 @@ type Props = {
   livePerMin: number;
   liveOnline: boolean;
   liveFlash: number;
+  // what-if
+  editTool: Tool | null;
+  onEdit: (e: EditClick) => void;
+  overlay: GeoJSON.FeatureCollection | null;
+  newShadows: GeoJSON.FeatureCollection | null;
+  changed: [number, number][];
+  sidePad: number;
 };
 
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -52,13 +61,23 @@ async function loadStyle(): Promise<StyleSpecification | string> {
   return FALLBACK_STYLE;
 }
 
+// metres -> pixels at Cremorne's latitude (512 px tiles: 4.24 px per metre at z18)
+// (zoom must stay the top-level input, so a minimum size goes inside each stop)
+const metres = (m: ExpressionSpecification | number, minPx = 0): ExpressionSpecification => [
+  "interpolate", ["exponential", 2], ["zoom"], 13, ["max", minPx, ["*", m, 0.1325]], 20, ["max", minPx, ["*", m, 16.96]],
+];
+
 const shadeColor: ExpressionSpecification = [
   "interpolate", ["linear"], ["coalesce", ["feature-state", "shade"], 0],
-  0, "#f39c12", 0.35, "#e7b65c", 0.65, "#7ea6c9", 1, "#2f5f8f",
+  0, "#f59e0b", 0.35, "#f4c06a", 0.65, "#7aa7d6", 1, "#1e4e8c",
 ];
 const crowdColor: ExpressionSpecification = [
   "match", ["coalesce", ["feature-state", "los"], 0],
   0, LOS_COLORS[0], 1, LOS_COLORS[1], 2, LOS_COLORS[2], 3, LOS_COLORS[3], 4, LOS_COLORS[4], 5, LOS_COLORS[5], "#999",
+];
+const comfortColor: ExpressionSpecification = [
+  "interpolate", ["linear"], ["coalesce", ["feature-state", "comfort"], 100],
+  40, "#e11d48", 60, "#f97316", 75, "#facc15", 90, "#34d399", 100, "#0d9488",
 ];
 const shadeWidth: ExpressionSpecification = [
   "interpolate", ["linear"], ["zoom"], 14, ["case", ["get", "inside"], 1.4, 0.8], 17, ["case", ["get", "inside"], 4.5, 2],
@@ -67,6 +86,11 @@ const crowdWidth: ExpressionSpecification = [
   "interpolate", ["linear"], ["zoom"],
   14, ["+", 1, ["*", 0.8, ["coalesce", ["feature-state", "los"], 0]]],
   17, ["+", 2.5, ["*", 2, ["coalesce", ["feature-state", "los"], 0]]],
+];
+const diffOpacity: ExpressionSpecification = ["case", [">", ["abs", ["coalesce", ["feature-state", "delta"], 0]], 0.01], 0.95, 0];
+const diffColor: ExpressionSpecification = [
+  "interpolate", ["linear"], ["coalesce", ["feature-state", "delta"], 0],
+  -0.6, "#e11d48", -0.01, "#fb7185", 0.01, "#34d399", 0.6, "#047857",
 ];
 
 export default function MapView(p: Props) {
@@ -77,6 +101,7 @@ export default function MapView(p: Props) {
   const liveEl = useRef<HTMLDivElement | null>(null);
   const fromMarker = useRef<maplibregl.Marker | null>(null);
   const toMarker = useRef<maplibregl.Marker | null>(null);
+  const prevChanged = useRef<number[]>([]);
   const propsRef = useRef(p);
   propsRef.current = p;
 
@@ -98,11 +123,12 @@ export default function MapView(p: Props) {
         center: p.meta.center,
         zoom: 15.9,
         minZoom: 13,
-        maxZoom: 19,
-        attributionControl: { compact: true, customAttribution: "© OpenStreetMap contributors · City of Yarra open data" },
+        maxZoom: 19.5,
+        attributionControl: false,
       });
       mapRef.current = map;
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+      map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: "© OpenStreetMap contributors · City of Yarra open data" }), "bottom-right");
       map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 
       map.once("style.load", async () => {
@@ -113,17 +139,20 @@ export default function MapView(p: Props) {
         const [network, buildings, trees] = await layers;
         if (cancelled) return;
         map.addSource("shadows", { type: "geojson", data: EMPTY });
+        map.addSource("wi-shadows", { type: "geojson", data: EMPTY });
         map.addSource("network", { type: "geojson", data: network });
         map.addSource("buildings", { type: "geojson", data: buildings });
         map.addSource("trees", { type: "geojson", data: trees });
         map.addSource("routes", { type: "geojson", data: EMPTY });
         map.addSource("nodes", { type: "geojson", data: EMPTY });
+        map.addSource("overlay", { type: "geojson", data: EMPTY });
 
-        map.addLayer({ id: "shadows", type: "fill", source: "shadows", paint: { "fill-color": "#1b3354", "fill-opacity": 0.34 } });
+        map.addLayer({ id: "shadows", type: "fill", source: "shadows", paint: { "fill-color": "#15294a", "fill-opacity": 0.3 } });
+        map.addLayer({ id: "wi-shadows", type: "fill", source: "wi-shadows", paint: { "fill-color": "#065f46", "fill-opacity": 0.38 } });
         map.addLayer({
           id: "trees", type: "circle", source: "trees",
           paint: {
-            "circle-color": "#3f8f4f", "circle-opacity": 0.35, "circle-stroke-width": 0,
+            "circle-color": "#3f8f4f", "circle-opacity": 0.32, "circle-stroke-width": 0,
             "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 14, ["*", ["get", "r"], 0.25], 18, ["*", ["get", "r"], 4]],
           },
         });
@@ -132,14 +161,47 @@ export default function MapView(p: Props) {
           layout: { "line-cap": "round", "line-join": "round" },
           paint: { "line-color": shadeColor, "line-width": shadeWidth, "line-opacity": ["case", ["get", "inside"], 0.95, 0.3] },
         });
+        // what-if: segments whose shade changed (green = more shade, red = less)
+        map.addLayer({
+          id: "wi-diff-glow", type: "line", source: "network",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 14, 5, 18, 14], "line-opacity": diffOpacity },
+        });
+        map.addLayer({
+          id: "wi-diff", type: "line", source: "network",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": diffColor, "line-width": ["interpolate", ["linear"], ["zoom"], 14, 2.5, 18, 8], "line-opacity": diffOpacity },
+        });
         map.addLayer({
           id: "buildings-flat", type: "fill", source: "buildings",
-          paint: { "fill-color": "#d5d2cb", "fill-outline-color": "#b9b4aa", "fill-opacity": 0.9 },
+          paint: { "fill-color": "#d9d6cf", "fill-outline-color": "#bcb7ad", "fill-opacity": 0.92 },
         });
         map.addLayer({
           id: "buildings-3d", type: "fill-extrusion", source: "buildings",
           layout: { visibility: "none" },
-          paint: { "fill-extrusion-color": "#dcd8d0", "fill-extrusion-height": ["get", "h"], "fill-extrusion-opacity": 0.85 },
+          paint: { "fill-extrusion-color": "#e2ded6", "fill-extrusion-height": ["get", "h"], "fill-extrusion-opacity": 0.88 },
+        });
+        // what-if interventions
+        map.addLayer({
+          id: "wi-closure", type: "line", source: "overlay", filter: ["==", ["get", "kind"], "closure"],
+          layout: { "line-cap": "butt" },
+          paint: { "line-color": "#e11d48", "line-width": ["interpolate", ["linear"], ["zoom"], 14, 3, 18, 9], "line-dasharray": [1.2, 0.8] },
+        });
+        map.addLayer({
+          id: "wi-canopy", type: "fill", source: "overlay", filter: ["in", ["get", "kind"], ["literal", ["sail", "awning"]]],
+          paint: { "fill-color": "#fde68a", "fill-opacity": 0.9, "fill-outline-color": "#b45309" },
+        });
+        map.addLayer({
+          id: "wi-tree-mature", type: "circle", source: "overlay", filter: ["==", ["get", "kind"], "tree"],
+          paint: { "circle-radius": metres(["get", "r_mature"]), "circle-color": "rgba(0,0,0,0)", "circle-stroke-color": "#059669", "circle-stroke-width": 1.2, "circle-stroke-opacity": 0.7 },
+        });
+        map.addLayer({
+          id: "wi-tree", type: "circle", source: "overlay", filter: ["==", ["get", "kind"], "tree"],
+          paint: { "circle-radius": metres(["get", "r"]), "circle-color": "#10b981", "circle-opacity": 0.75, "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5 },
+        });
+        map.addLayer({
+          id: "wi-removed", type: "circle", source: "overlay", filter: ["==", ["get", "kind"], "remove_tree"],
+          paint: { "circle-radius": metres(["get", "r"], 6), "circle-color": "rgba(225,29,72,0.15)", "circle-stroke-color": "#e11d48", "circle-stroke-width": 2 },
         });
         map.addLayer({
           id: "routes-casing", type: "line", source: "routes",
@@ -161,7 +223,7 @@ export default function MapView(p: Props) {
           paint: {
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 5, 17, 9],
             "circle-color": ["get", "color"],
-            "circle-stroke-color": "#1d2b3a", "circle-stroke-width": 2,
+            "circle-stroke-color": "#0b1324", "circle-stroke-width": 2,
           },
         });
 
@@ -175,30 +237,30 @@ export default function MapView(p: Props) {
           liveMarker.current = new maplibregl.Marker({ element: d }).setLngLat([live.lon, live.lat]).addTo(map);
         }
 
-        const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "edge-pop", offset: 8 });
+        const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "edge-pop", offset: 10 });
         map.on("mousemove", "network", (e) => {
           const f = e.features?.[0];
           const st = propsRef.current.state;
-          if (!f || !st) return;
+          if (!f || !st || propsRef.current.editTool) return;
           map.getCanvas().style.cursor = propsRef.current.pickMode ? "crosshair" : "pointer";
           const i = f.properties.id as number;
           const los = st.edges.los[i];
           const shade = st.sun.up ? `${Math.round(st.edges.shade[i] * 100)}% shaded` : "sun down";
+          const delta = propsRef.current.changed.find((c) => c[0] === i);
           popup
             .setLngLat(e.lngLat)
             .setHTML(
-              `<b>${f.properties.name}</b><br/>${shade} · <span style="color:${LOS_COLORS[los]}">LOS ${LOS[los]}</span> ${LOS_TEXT[los].toLowerCase()}<br/><small>${st.edges.per_m[i]} people/min per metre of footpath</small>`,
+              `<b>${f.properties.name}</b><div class="pp-row"><span>${shade}</span><span style="color:${LOS_COLORS[los]}">LOS ${LOS[los]} · ${LOS_TEXT[los].toLowerCase()}</span></div>` +
+                `<div class="pp-row"><span>Comfort ${st.edges.comfort?.[i] ?? "–"}/100</span><span>${st.edges.per_m[i]} ppl/min/m</span></div>` +
+                (delta ? `<div class="pp-delta ${delta[1] > 0 ? "up" : "down"}">What-if: ${delta[1] > 0 ? "+" : ""}${Math.round(delta[1] * 100)} pts shade</div>` : ""),
             )
             .addTo(map);
         });
         map.on("mouseleave", "network", () => {
-          map.getCanvas().style.cursor = propsRef.current.pickMode ? "crosshair" : "";
+          map.getCanvas().style.cursor = cursorFor();
           popup.remove();
         });
-        map.on("click", (e) => {
-          const pm = propsRef.current.pickMode;
-          if (pm) propsRef.current.onPick([e.lngLat.lng, e.lngLat.lat]);
-        });
+        map.on("click", (e) => onClick(map, e));
         ready.current = true;
         applyAll();
       });
@@ -212,15 +274,56 @@ export default function MapView(p: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function cursorFor() {
+    const { pickMode, editTool } = propsRef.current;
+    if (editTool === "erase" || editTool === "remove_tree") return "pointer";
+    return pickMode || editTool ? "crosshair" : "";
+  }
+
+  function onClick(map: maplibregl.Map, e: MapMouseEvent) {
+    const { pickMode, editTool, onPick, onEdit } = propsRef.current;
+    const ll: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+    if (pickMode) return onPick(ll);
+    if (!editTool) return;
+    const box: [maplibregl.PointLike, maplibregl.PointLike] = [[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]];
+    if (editTool === "erase") {
+      const f = map.queryRenderedFeatures(box, { layers: ["wi-tree", "wi-canopy", "wi-removed", "wi-closure"] })[0];
+      if (f) onEdit({ lngLat: ll, itemIndex: f.properties.i as number });
+      return;
+    }
+    if (editTool === "remove_tree") {
+      const fs = map.queryRenderedFeatures(box, { layers: ["trees"] });
+      if (!fs.length) return;
+      // nearest canopy centre to the click
+      const best = fs.reduce((a, f) => {
+        const c = (f.geometry as GeoJSON.Point).coordinates;
+        const d = (c[0] - ll[0]) ** 2 + (c[1] - ll[1]) ** 2;
+        return d < a.d ? { d, i: f.properties.i as number } : a;
+      }, { d: Infinity, i: -1 });
+      if (best.i >= 0) onEdit({ lngLat: ll, treeIndex: best.i });
+      return;
+    }
+    onEdit({ lngLat: ll });
+  }
+
   // ------------------------------------------------------------------ updates
   function applyEdges() {
     const map = mapRef.current;
     const st = propsRef.current.state;
     if (!map || !ready.current || !st) return;
-    const { shade, los } = st.edges;
+    const { shade, los, comfort } = st.edges;
     for (let i = 0; i < shade.length; i++) {
-      map.setFeatureState({ source: "network", id: i }, { shade: st.sun.up ? shade[i] : 1, los: los[i] });
+      map.setFeatureState({ source: "network", id: i }, { shade: st.sun.up ? shade[i] : 1, los: los[i], comfort: comfort?.[i] ?? 100 });
     }
+  }
+
+  function applyDiff() {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    for (const i of prevChanged.current) map.setFeatureState({ source: "network", id: i }, { delta: 0 });
+    const ch = propsRef.current.changed;
+    for (const [i, d] of ch) map.setFeatureState({ source: "network", id: i }, { delta: d });
+    prevChanged.current = ch.map((c) => c[0]);
   }
 
   function applyToggles() {
@@ -229,16 +332,13 @@ export default function MapView(p: Props) {
     const t = propsRef.current.toggles;
     const vis = (id: string, on: boolean) => map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
     vis("shadows", t.shadows);
+    vis("wi-shadows", t.shadows);
     vis("trees", t.trees);
     vis("nodes", t.nodes);
     vis("network", t.network !== "off");
-    if (t.network === "crowd") {
-      map.setPaintProperty("network", "line-color", crowdColor);
-      map.setPaintProperty("network", "line-width", crowdWidth);
-    } else {
-      map.setPaintProperty("network", "line-color", shadeColor);
-      map.setPaintProperty("network", "line-width", shadeWidth);
-    }
+    const color = t.network === "crowd" ? crowdColor : t.network === "comfort" ? comfortColor : shadeColor;
+    map.setPaintProperty("network", "line-color", color);
+    map.setPaintProperty("network", "line-width", t.network === "crowd" ? crowdWidth : shadeWidth);
     vis("buildings-3d", t.buildings3d);
     vis("buildings-flat", !t.buildings3d);
     if (liveEl.current) liveEl.current.style.display = t.nodes ? "" : "none";
@@ -248,6 +348,13 @@ export default function MapView(p: Props) {
     const map = mapRef.current;
     if (!map || !ready.current) return;
     (map.getSource("shadows") as GeoJSONSource).setData(propsRef.current.shadows ?? EMPTY);
+  }
+
+  function applyOverlay() {
+    const map = mapRef.current;
+    if (!map || !ready.current) return;
+    (map.getSource("overlay") as GeoJSONSource).setData(propsRef.current.overlay ?? EMPTY);
+    (map.getSource("wi-shadows") as GeoJSONSource).setData(propsRef.current.newShadows ?? EMPTY);
   }
 
   function applyRoutes() {
@@ -313,13 +420,15 @@ export default function MapView(p: Props) {
     framedFor.current = key;
     const b = new maplibregl.LngLatBounds();
     for (const route of routes) for (const c of route.geometry.coordinates) b.extend(c);
-    map.fitBounds(b, { padding: { top: 90, bottom: 190, left: 280, right: 260 }, maxZoom: 17, duration: 900 });
+    map.fitBounds(b, { padding: { top: 110, bottom: 190, left: propsRef.current.sidePad + 40, right: 120 }, maxZoom: 17, duration: 900 });
   }
 
   function applyAll() {
     applyToggles();
     applyEdges();
+    applyDiff();
     applyShadows();
+    applyOverlay();
     applyRoutes();
     applyNodes();
     applyEndpoints();
@@ -330,6 +439,8 @@ export default function MapView(p: Props) {
   useEffect(applyEdges, [p.state]);
   useEffect(applyNodes, [p.state]);
   useEffect(applyShadows, [p.shadows]);
+  useEffect(applyOverlay, [p.overlay, p.newShadows]);
+  useEffect(applyDiff, [p.changed]);
   useEffect(applyRoutes, [p.routes, p.selectedMode]);
   useEffect(applyEndpoints, [p.from, p.to]);
 
@@ -342,8 +453,9 @@ export default function MapView(p: Props) {
   }, [p.toggles]);
   useEffect(() => {
     const map = mapRef.current;
-    if (map) map.getCanvas().style.cursor = p.pickMode ? "crosshair" : "";
-  }, [p.pickMode]);
+    if (map) map.getCanvas().style.cursor = cursorFor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.pickMode, p.editTool]);
 
   function applyLive() {
     const d = liveEl.current;

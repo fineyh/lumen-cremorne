@@ -12,9 +12,10 @@ import shapely
 from .crowd import LOS_LETTERS, CrowdModel
 from .geo import ring_to_lonlat, to_xy
 from .precinct import Precinct, load
-from .router import WALK_SPEED, Conditions, Router, heat_factor
+from .router import WALK_SPEED, Conditions, Router, comfort, heat_factor
 from .shade import ShadeModel
 from .sun import sun_times
+from .whatif import Plan, WhatIf
 
 HOT_DAY = date(2026, 2, 11)  # a Wednesday in February
 SCENARIOS = {
@@ -52,6 +53,7 @@ class Lumen:
         self.crowd = CrowdModel(self.p)
         self.labels = self._edge_labels()
         self.router = Router(self.p, self.labels)
+        self.whatif = WhatIf(self.p, self.shade)
         self.in_cremorne = np.array([
             self.p.cremorne.contains(shapely.Point(*c.mean(axis=0))) for c in self.p.e_coords
         ])
@@ -99,10 +101,18 @@ class Lumen:
         sc["key"] = key if key in SCENARIOS else "hot"
         return sc
 
-    def conditions(self, scenario: str, minutes: int, temp: float | None = None) -> Conditions:
+    def conditions(self, scenario: str, minutes: int, temp: float | None = None, plan: Plan | None = None,
+                   shade_minutes: int | None = None) -> Conditions:
+        """Shade + crowd + temperature at a time; `plan` overlays a what-if plan on the base data.
+
+        `shade_minutes` lets callers reuse a nearby pre-computed shadow frame (shade moves slowly,
+        crowds move by the minute).
+        """
         sc = self.scenario(scenario)
         t = temp if temp is not None else temp_at(sc, minutes)
-        return Conditions(self.shade.frame(sc["date"], minutes), self.crowd.frame(minutes), t, minutes)
+        sm = minutes if shade_minutes is None else shade_minutes
+        shade = self.whatif.frame(plan, sc["date"], sm) if plan else self.shade.frame(sc["date"], sm)
+        return Conditions(shade, self.crowd.frame(minutes), t, minutes, closed=plan.closed if plan else None)
 
     def resolve(self, ref: str) -> tuple[int, str]:
         """A stop id, office id or 'lon,lat' -> (graph node, display name)."""
@@ -143,17 +153,19 @@ class Lumen:
 
         lon, lat = to_lonlat(self.p.tree_xy[:, 0], self.p.tree_xy[:, 1])
         return {"type": "FeatureCollection", "features": [
-            {"type": "Feature", "properties": {"r": round(float(r), 1)},
+            {"type": "Feature", "id": i, "properties": {"i": i, "r": round(float(r), 1)},
              "geometry": {"type": "Point", "coordinates": [round(float(a), 6), round(float(b), 6)]}}
-            for a, b, r in zip(lon, lat, self.p.tree_radius)
+            for i, (a, b, r) in enumerate(zip(lon, lat, self.p.tree_radius))
         ]}
 
     # ------------------------------------------------------------------ state per time
-    def state(self, scenario: str, minutes: int, temp: float | None = None) -> dict:
+    def state(self, scenario: str, minutes: int, temp: float | None = None, plan: Plan | None = None) -> dict:
         sc = self.scenario(scenario)
-        cond = self.conditions(scenario, minutes, temp)
+        cond = self.conditions(scenario, minutes, temp, plan)
         sh, cr = cond.shade, cond.crowd
         rise, set_ = sun_times(sc["date"])
+        ce = comfort(cond)
+        m = self.in_cremorne
         return {
             "scenario": {k: (str(v) if k == "date" else v) for k, v in sc.items()},
             "minutes": minutes,
@@ -162,12 +174,14 @@ class Lumen:
             "heat_factor": round(heat_factor(cond.temp_c), 2),
             "sun": {"azimuth": round(sh.azimuth, 1), "elevation": round(sh.elevation, 1),
                     "up": sh.sun_up, "sunrise": rise, "sunset": set_},
-            "shaded_share": round(float(np.average(sh.edge_shade[self.in_cremorne],
-                                                   weights=self.p.e_len[self.in_cremorne])), 3),
+            "shaded_share": round(float(np.average(sh.edge_shade[m], weights=self.p.e_len[m])), 3),
+            "comfort": round(float(np.average(ce[m], weights=self.p.e_len[m])), 1),
+            "plan": plan.key if plan else None,
             "edges": {
                 "shade": np.round(sh.edge_shade, 2).tolist(),
                 "per_m": np.round(cr.per_m, 1).tolist(),
                 "los": cr.los.tolist(),
+                "comfort": np.round(ce).astype(int).tolist(),
             },
             "los_counts": self._los_km(cr.los),
             "stop_outflow": {k: round(v) for k, v in cr.stop_outflow.items()},
@@ -183,7 +197,7 @@ class Lumen:
         """Most crowded and most sun-exposed streets right now, grouped by street name."""
         p = self.p
         crowd_by, heat_by = {}, {}
-        sun = (1 - cond.shade.edge_shade) if cond.shade.sun_up else np.zeros(len(p.e_len))
+        sun = cond.sun
         exposure = cond.crowd.flow * sun * p.e_len / WALK_SPEED / 60  # person-minutes in sun per minute
         for i in np.nonzero(self.in_cremorne)[0]:
             name = self.labels[i]
@@ -203,13 +217,15 @@ class Lumen:
         }
 
     # ------------------------------------------------------------------ routes
-    def routes(self, src: str, dst: str, scenario: str, minutes: int, temp: float | None = None) -> dict:
+    def routes(self, src: str, dst: str, scenario: str, minutes: int, temp: float | None = None,
+               plan: Plan | None = None) -> dict:
         a, a_name = self.resolve(src)
         b, b_name = self.resolve(dst)
-        cond = self.conditions(scenario, minutes, temp)
+        cond = self.conditions(scenario, minutes, temp, plan)
         return {
             "from": a_name, "to": b_name, "time": fmt_time(minutes), "temp_c": round(cond.temp_c, 1),
             "heat_factor": round(heat_factor(cond.temp_c), 2),
+            "plan": plan.key if plan else None,
             "routes": self.router.routes(a, b, cond),
         }
 

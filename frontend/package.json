@@ -10,7 +10,9 @@
     "postinstall": "node scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
+    "lucide-react": "^1.49.0",
     "maplibre-gl": "^6.11.2",
+    "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
@@ -19,6 +21,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1"
+    "vite": "^8.3.1",
+    "@types/qrcode": "^1.5.6"
   }
 }

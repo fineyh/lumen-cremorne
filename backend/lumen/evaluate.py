@@ -4,10 +4,15 @@ For every (stop -> workplace) pair, compare the shortest route with Lumen's cool
 routes under three conditions: hot-day 8:45, hot-day 15:30 and a mild control day at 15:30
 (where Lumen should *not* send anyone on a detour).
 
-    python -m lumen.evaluate          # from backend/, writes data/cache/evaluation.json
+    python -m lumen.evaluate                         # from backend/, writes data/cache/evaluation.json
+    python -m lumen.evaluate --plan <id or file>     # re-run the same trips with a what-if plan applied
+
+With --plan, only trips whose shortest or coolest path touches a segment the plan changes are
+re-computed (the rest are provably identical), and the before / after is printed per case.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import statistics
@@ -103,7 +108,57 @@ def load_or_run(lumen: Lumen, force: bool = False) -> dict:
     return data
 
 
+def run_plan(lumen: Lumen, raw: dict) -> dict:
+    """Before / after for a what-if plan under every evaluation case."""
+    plan = lumen.whatif.register(raw)
+    out = {"plan": raw.get("name") or plan.key, "key": plan.key, "years": plan.years, "cases": []}
+    for case in CASES:
+        r = lumen.whatif.compare(lumen, plan, case["scenario"], case["minutes"])
+        out["cases"].append({**case, **{k: v for k, v in r.items() if k not in ("new_shadows", "edges")}})
+    return out
+
+
+def _load_plan(ref: str) -> dict:
+    from .whatif import load_saved
+
+    f = pathlib.Path(ref)
+    if f.exists():
+        return json.loads(f.read_text(encoding="utf-8"))
+    doc = load_saved(ref)
+    if doc is None:
+        raise SystemExit(f"no plan file or saved plan id '{ref}'")
+    return doc
+
+
+def _print_plan(res: dict) -> None:
+    print(f"What-if plan: {res['plan']} (key {res['key']}, trees at year {res['years']:g})")
+    cost = res["cases"][0]["cost"]
+    print(f"   indicative capital cost A${cost['low']:,}-{cost['high']:,}"
+          + (f", closures A${cost['closure_per_day'][0]:,}-{cost['closure_per_day'][1]:,}/day" if cost["closure_per_day"] else ""))
+    for c in res["cases"]:
+        u, k = c["usual"], c["coolest"]
+        print(f"{c['label']:<24} T={c['temp_c']}°C  re-computed {c['trips_recomputed']}/{c['trips_total']} trips "
+              f"in {c['compute_ms']} ms")
+        print(f"   shaded share {100 * c['precinct']['shaded_share'][0]:.1f}% -> {100 * c['precinct']['shaded_share'][1]:.1f}%  "
+              f"comfort {c['precinct']['comfort'][0]} -> {c['precinct']['comfort'][1]}")
+        print(f"   usual routes: sun {u['sun_min'][0]} -> {u['sun_min'][1]} min total ({u['trips_benefit']} trips better, "
+              f"{u['trips_worse']} worse, {u['trips_detoured']} detoured); ~{u['person_sun_min_saved']} person-min saved")
+        print(f"   coolest routes: sun {k['sun_min'][0]} -> {k['sun_min'][1]} min, walking {k['walk_min'][0]} -> {k['walk_min'][1]} min")
+        print(f"   {c['trips_benefit']} station -> workplace trips benefit")
+
+
 if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--plan", help="saved plan id (data/whatif/<id>.json) or a plan JSON file")
+    args = ap.parse_args()
+    if args.plan:
+        lumen = Lumen()
+        res = run_plan(lumen, _load_plan(args.plan))
+        _print_plan(res)
+        dest = CACHE.parent / f"whatif-eval-{res['key']}.json"
+        dest.write_text(json.dumps(res), encoding="utf-8")
+        print("wrote", dest)
+        raise SystemExit(0)
     res = load_or_run(Lumen(), force=True)
     for c in res["cases"]:
         s, k = c["sun"], c["crowd"]

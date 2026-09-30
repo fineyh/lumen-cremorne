@@ -1,0 +1,14 @@
+{
+  "name": "Lumen · Cremorne",
+  "short_name": "Lumen",
+  "description": "Cooler, calmer walks and quiet delivery windows in Cremorne. No login.",
+  "start_url": "/m",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f4ef",
+  "theme_color": "#0b1324",
+  "icons": [
+    { "src": "/lumen.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/lumen.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

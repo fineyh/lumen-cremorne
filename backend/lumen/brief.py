@@ -130,22 +130,23 @@ def ollama_available() -> str | None:
         return None
 
 
-def polish(lines: list[str]) -> tuple[list[str], str]:
-    """Let the local model reword the brief; keep the template if any number changed."""
+def polish(lines: list[str], audience: str = "a Slack message for office workers") -> tuple[list[str], str]:
+    """Let the local model reword the text; keep the template if any number changed."""
     model = ollama_available()
     if not model:
         return lines, "template"
+    n = len(lines)
     prompt = (
-        "Rewrite this Slack message for office workers in Cremorne, Melbourne. Keep exactly 3 lines, "
-        "keep each emoji at the start of its line, keep every number exactly as written, be friendly and brief. "
-        "Return only the message.\n\n" + "\n".join(lines)
+        f"Rewrite this text as {audience} in Cremorne, Melbourne. Keep exactly {n} lines, "
+        "keep any emoji at the start of its line, keep every number and time exactly as written, be friendly and brief. "
+        "Return only the text.\n\n" + "\n".join(lines)
     )
     try:
         r = requests.post(f"{OLLAMA}/api/generate", json={"model": model, "prompt": prompt, "stream": False,
                                                           "options": {"temperature": 0.3}}, timeout=45)
         text = r.json()["response"].strip()
         out = [l.strip() for l in text.splitlines() if l.strip()]
-        if _numbers("\n".join(lines)) <= _numbers(text) and 2 <= len(out) <= 4:
+        if _numbers("\n".join(lines)) <= _numbers(text) and max(1, n - 1) <= len(out) <= n + 1:
             return out, f"ollama:{model}"
     except Exception:
         pass

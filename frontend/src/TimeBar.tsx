@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Pause, Play, Thermometer, Umbrella } from "lucide-react";
 import { fmtTime, get, type Scenario, type State } from "./api";
 
 const MIN = 360;
@@ -49,7 +50,7 @@ export default function TimeBar(p: Props) {
   ];
 
   return (
-    <div className="timebar">
+    <div className="timebar glass">
       <div className="tb-top">
         <div className="scen">
           {p.scenarios.map((s) => (
@@ -61,19 +62,20 @@ export default function TimeBar(p: Props) {
         {st && (
           <div className="readouts">
             <SunDial az={st.sun.azimuth} el={st.sun.elevation} />
-            <div><b>{fmtTime(p.minutes)}</b><small>{st.scenario.date}</small></div>
-            <div><b className={st.temp_c >= 30 ? "hot" : ""}>{st.temp_c.toFixed(1)}°C</b><small>{st.heat_factor > 0 ? `heat weight ${st.heat_factor}` : "shade not weighted"}</small></div>
+            <div className="ro-time"><b>{fmtTime(p.minutes)}</b><small>{st.scenario.date}</small></div>
+            <div><b className={st.temp_c >= 30 ? "hot" : ""}><Thermometer size={14} /> {st.temp_c.toFixed(1)}°C</b><small>{st.heat_factor > 0 ? `heat weight ${st.heat_factor}` : "shade not weighted"}</small></div>
             <div><b>{st.sun.up ? `${st.sun.elevation.toFixed(0)}°` : "—"}</b><small>{st.sun.up ? `sun elevation, az ${st.sun.azimuth.toFixed(0)}°` : "sun down"}</small></div>
-            <div><b>{Math.round(st.shaded_share * 100)}%</b><small>of paths have a shaded side</small></div>
+            <div><b><Umbrella size={14} /> {Math.round(st.shaded_share * 100)}%</b><small>paths with a shaded side</small></div>
+            <div><b className="comfort-v">{st.comfort?.toFixed(0) ?? "–"}</b><small>Comfort Score</small></div>
           </div>
         )}
         {p.loading && <span className="spinner" aria-label="computing" />}
       </div>
       <div className="tb-slider">
         <button className="play" onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>
-          {playing ? "❚❚" : "▶"}
+          {playing ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}
         </button>
-        <div className="track">
+        <div className="track" style={{ ["--pct" as string]: `${((p.minutes - MIN) / (MAX - MIN)) * 100}%` }}>
           <input type="range" min={MIN} max={MAX} step={STEP} value={p.minutes} onChange={(e) => p.setMinutes(Number(e.target.value))} />
           <div className="marks">
             {marks.map((k) => (

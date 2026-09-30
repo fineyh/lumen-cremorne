@@ -1,3 +1,4 @@
+import { ArrowDownUp, Crosshair, Footprints, Sparkles, Sprout, Sun, TreeDeciduous, Users } from "lucide-react";
 import { LOS, LOS_COLORS, MODE_COLORS, placeName, type Meta, type Route, type RouteResponse } from "../api";
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
   setSelectedMode: (m: string) => void;
   pickMode: "from" | "to" | null;
   setPickMode: (m: "from" | "to" | null) => void;
+  planActive: boolean;
 };
 
 const MAIN_STOPS = [
@@ -53,8 +55,8 @@ export default function RoutePanel(p: Props) {
             ))}
           </optgroup>
         </select>
-        <button className={`ghost ${p.pickMode === which ? "on" : ""}`} onClick={() => p.setPickMode(p.pickMode === which ? null : which)} title="Pick on map">
-          ⌖
+        <button className={`icon-only ${p.pickMode === which ? "on" : ""}`} onClick={() => p.setPickMode(p.pickMode === which ? null : which)} title="Pick on map">
+          <Crosshair size={16} />
         </button>
       </div>
     );
@@ -63,17 +65,20 @@ export default function RoutePanel(p: Props) {
   return (
     <div className="route-panel">
       <p className="lede">Shade Router finds the shortest, coolest and least crowded walk. Every number comes from the shadow and crowd models for the time on the slider.</p>
-      <div className="places">
+      <div className="places card-s">
         {placeSelect(p.from, p.setFrom, "from")}
-        <button className="swap" onClick={() => { const f = p.from; p.setFrom(p.to); p.setTo(f); }} aria-label="Swap">⇅</button>
+        <button className="swap" onClick={() => { const f = p.from; p.setFrom(p.to); p.setTo(f); }} aria-label="Swap"><ArrowDownUp size={13} /></button>
         {placeSelect(p.to, p.setTo, "to")}
       </div>
 
       {p.routes && (
         <>
           <div className="route-meta">
-            {p.routes.time} · {p.routes.temp_c}°C ·{" "}
-            {p.routes.heat_factor > 0 ? <>shade weighted ×{p.routes.heat_factor}</> : <>below 24°C, so shade isn't weighted</>}
+            <span>{p.routes.time} · {p.routes.temp_c}°C</span>
+            <span className={p.routes.heat_factor > 0 ? "pill warn" : "pill"}>
+              {p.routes.heat_factor > 0 ? <>shade weighted ×{p.routes.heat_factor}</> : <>below 24°C: shade not weighted</>}
+            </span>
+            {p.planActive && <span className="pill good"><Sprout size={11} /> with what-if plan</span>}
           </div>
           <div className="cards">
             {p.routes.routes.map((r) => (
@@ -85,9 +90,10 @@ export default function RoutePanel(p: Props) {
 
       {sel && (
         <div className="steps">
-          <h3>
-            {sel.label} route · {placeName(p.meta, p.from)} → {placeName(p.meta, p.to)}
-          </h3>
+          <div className="steps-h">
+            <b>{sel.label} route</b>
+            <span>{placeName(p.meta, p.from)} → {placeName(p.meta, p.to)}</span>
+          </div>
           {sel.note && <p className="note">{sel.note}</p>}
           <ol>
             {sel.steps.map((s, i) => (
@@ -98,7 +104,7 @@ export default function RoutePanel(p: Props) {
                   <i style={{ width: `${s.shaded_pct}%` }} />
                 </span>
                 <span className="los" style={{ background: LOS_COLORS[LOS.indexOf(s.los)] }}>{s.los}</span>
-                {s.shady_side && <span className="tip">keep to the {s.shady_side} side</span>}
+                {s.shady_side && <span className="tip"><TreeDeciduous size={12} /> keep to the {s.shady_side} side</span>}
               </li>
             ))}
           </ol>
@@ -113,15 +119,16 @@ function RouteCard({ r, on, onClick }: { r: Route; on: boolean; onClick: () => v
   const v = r.vs_shortest;
   const isBase = r.mode === "shortest";
   return (
-    <button className={`card ${on ? "on" : ""}`} onClick={onClick} style={{ ["--c" as string]: MODE_COLORS[r.mode] }}>
-      <div className="card-h">
+    <button className={`rcard ${on ? "on" : ""}`} onClick={onClick} style={{ ["--c" as string]: MODE_COLORS[r.mode] }}>
+      <div className="rcard-h">
         <span className="swatch" />
         {r.label}
       </div>
       <div className="big">{r.minutes.toFixed(1)}<small> min</small></div>
-      <div className="kv"><span>☀ sun</span><b>{r.sun_minutes.toFixed(1)} min</b></div>
-      <div className="kv"><span>👥 crowd</span><b>{r.crowded_minutes.toFixed(1)} min</b></div>
-      <div className="kv"><span>🌳 shade</span><b>{r.shaded_pct}%</b></div>
+      <div className="kv"><span><Sun size={12} /> sun</span><b>{r.sun_minutes.toFixed(1)}</b></div>
+      <div className="kv"><span><Users size={12} /> crowd</span><b>{r.crowded_minutes.toFixed(1)}</b></div>
+      <div className="kv"><span><Footprints size={12} /> shade</span><b>{r.shaded_pct}%</b></div>
+      <div className="kv"><span><Sparkles size={12} /> comfort</span><b>{r.comfort}</b></div>
       {!isBase && (
         <div className="deltas">
           {r.same_as_shortest ? (

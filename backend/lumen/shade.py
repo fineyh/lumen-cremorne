@@ -29,10 +29,25 @@ class ShadeFrame:
     edge_shade: np.ndarray        # shaded fraction of the best side of each edge, 0..1
     edge_best_side: np.ndarray    # 0 = left of u->v (or centre), 1 = right
     edge_side_gain: np.ndarray    # how much more shade the best side has than the other
+    inside: np.ndarray | None = None  # per shade sample: inside any shadow (None at night)
+    _tree: shapely.STRtree | None = None
+
+    @property
+    def tree(self) -> shapely.STRtree:
+        """Spatial index over this frame's shadow polygons (built on first use)."""
+        if self._tree is None:
+            self._tree = shapely.STRtree(self.shadows)
+        return self._tree
 
     @property
     def sun_up(self) -> bool:
         return self.elevation > 0.5
+
+
+def shadow_vector(azimuth: float, elevation: float) -> tuple[float, float]:
+    """Shadow offset (m) per metre of object height; shadows point away from the sun."""
+    k = min(1.0 / math.tan(math.radians(elevation)), MAX_SHADOW / 10.0)
+    return -math.sin(math.radians(azimuth)) * k, -math.cos(math.radians(azimuth)) * k
 
 
 class ShadeModel:
@@ -55,6 +70,7 @@ class ShadeModel:
         self._concave = np.nonzero(hull_ratio > 1.25)[0]
         self._geojson_cache: dict[tuple[date, int], dict] = {}
         self._sample_pts = shapely.points(precinct.s_x, precinct.s_y)
+        self.n_building_shadows = len(rings)  # tree shadows follow the building shadows in ShadeFrame.shadows
 
     # ------------------------------------------------------------------ geometry
     def _building_shadows(self, dx: float, dy: float):
@@ -91,22 +107,20 @@ class ShadeModel:
         if el <= 0.5:
             f = ShadeFrame(d, minutes, az, el, None, np.ones(n_edges), np.zeros(n_edges, int), np.zeros(n_edges))
         else:
-            k = min(1.0 / math.tan(math.radians(el)), MAX_SHADOW / 10.0)
-            # shadow points away from the sun
-            dx = -math.sin(math.radians(az)) * k
-            dy = -math.cos(math.radians(az)) * k
+            dx, dy = shadow_vector(az, el)
             shadows = np.concatenate([self._building_shadows(dx, dy), self._tree_shadows(dx, dy)])
-            hits = shapely.STRtree(shadows).query(self._sample_pts, predicate="intersects")[0]
+            tree = shapely.STRtree(shadows)
+            hits = tree.query(self._sample_pts, predicate="intersects")[0]
             inside = np.zeros(len(self.p.s_x), dtype=bool)
             inside[hits] = True
-            f = ShadeFrame(d, minutes, az, el, shadows, *self._edge_fractions(inside))
+            f = ShadeFrame(d, minutes, az, el, shadows, *self.edge_fractions(inside), inside=inside, _tree=tree)
         with self._lock:
             self._cache[key] = f
             if len(self._cache) > 400:
                 self._cache.pop(next(iter(self._cache)))
         return f
 
-    def _edge_fractions(self, inside: np.ndarray):
+    def edge_fractions(self, inside: np.ndarray):
         p = self.p
         n = len(p.e_len)
         cnt = np.zeros((n, 2))

@@ -1,21 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import MapView, { type LayerToggles } from "./MapView";
+import {
+  BarChart3, Eye, EyeOff, Layers, LayoutDashboard, MessageSquareText, MousePointerClick, Route as RouteIcon,
+  ShieldCheck, Smartphone, Sprout, X,
+} from "lucide-react";
+import QRCode from "qrcode";
+import MapView, { type EditClick, type LayerToggles } from "./MapView";
 import TimeBar from "./TimeBar";
 import RoutePanel from "./panels/RoutePanel";
 import ConsolePanel from "./panels/ConsolePanel";
 import BriefPanel from "./panels/BriefPanel";
 import ImpactPanel from "./panels/ImpactPanel";
 import LimitsPanel from "./panels/LimitsPanel";
-import { get, type Meta, type RouteResponse, type State } from "./api";
+import WhatIfPanel, { TOOL_INFO } from "./panels/WhatIfPanel";
+import { get, post, type Draft, type Meta, type RouteResponse, type State, type Tool, type TreeSize, type WhatIfResponse } from "./api";
 
-type Tab = "route" | "console" | "brief" | "impact" | "limits";
-const TABS: { key: Tab; label: string }[] = [
-  { key: "route", label: "Route" },
-  { key: "console", label: "Precinct" },
-  { key: "brief", label: "Brief" },
-  { key: "impact", label: "Impact" },
-  { key: "limits", label: "Limits" },
+type Tab = "route" | "console" | "whatif" | "brief" | "impact" | "limits";
+const TABS: { key: Tab; label: string; icon: typeof RouteIcon }[] = [
+  { key: "route", label: "Route", icon: RouteIcon },
+  { key: "console", label: "Precinct", icon: LayoutDashboard },
+  { key: "whatif", label: "What-if", icon: Sprout },
+  { key: "brief", label: "Brief", icon: MessageSquareText },
+  { key: "impact", label: "Impact", icon: BarChart3 },
+  { key: "limits", label: "Limits", icon: ShieldCheck },
 ];
+const SIDE = 412;
 
 export type Live = { total: number; perMin: number; online: boolean; flash: number; temp?: number; noise?: number };
 
@@ -35,7 +43,33 @@ export default function App() {
   const [toggles, setToggles] = useState<LayerToggles>({ shadows: true, trees: true, network: "shade", buildings3d: false, nodes: true });
   const [live, setLive] = useState<Live>({ total: 0, perMin: 0, online: false, flash: 0 });
   const [loading, setLoading] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
+  // what-if
+  const [draft, setDraftRaw] = useState<Draft>({ items: [], years: 1 });
+  const [history, setHistory] = useState<Draft[]>([]);
+  const [tool, setTool] = useState<Tool | null>(null);
+  const [treeSize, setTreeSize] = useState<TreeSize>("medium");
+  const [whatif, setWhatif] = useState<WhatIfResponse | null>(null);
+  const [whatifBusy, setWhatifBusy] = useState(false);
+  const [showAfter, setShowAfter] = useState(true);
   const liveNodeId = meta?.nodes.find((n) => n.live)?.id ?? "node-00";
+
+  const draftRef = useRef(draft);
+  const setDraft = useCallback((d: Draft | ((d: Draft) => Draft)) => {
+    const cur = draftRef.current;
+    const next = typeof d === "function" ? d(cur) : d;
+    if (next === cur) return;
+    draftRef.current = next;
+    setHistory((h) => [...h.slice(-40), cur]);
+    setDraftRaw(next);
+  }, []);
+  const undo = () => {
+    if (!history.length) return;
+    const prev = history[history.length - 1];
+    draftRef.current = prev;
+    setHistory(history.slice(0, -1));
+    setDraftRaw(prev);
+  };
 
   // ------------------------------------------------------------------ bootstrap
   useEffect(() => {
@@ -48,7 +82,32 @@ export default function App() {
       .catch((e) => setErr(String(e)));
   }, []);
 
+  // ------------------------------------------------------------------ what-if: recompute on every edit
+  const planActive = draft.items.length > 0;
+  const planKey = planActive && showAfter && whatif && whatif.result.key === whatif.plan.key ? whatif.plan.key : null;
+  const wiReq = useRef(0);
+  useEffect(() => {
+    if (!meta) return;
+    if (!planActive) {
+      setWhatif(null);
+      return;
+    }
+    const id = ++wiReq.current;
+    setWhatifBusy(true);
+    const timer = setTimeout(() => {
+      post<WhatIfResponse>("/api/whatif/compare", { items: draft.items, years: draft.years, scenario, t: minutes })
+        .then((r) => {
+          if (id !== wiReq.current) return;
+          setWhatif(r);
+          setWhatifBusy(false);
+        })
+        .catch(() => id === wiReq.current && setWhatifBusy(false));
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [meta, draft, scenario, minutes, planActive]);
+
   // ------------------------------------------------------------------ time-dependent state
+  const planQ = planKey ? `&plan=${planKey}` : "";
   const reqId = useRef(0);
   useEffect(() => {
     if (!meta) return;
@@ -56,7 +115,7 @@ export default function App() {
     setLoading(true);
     const timer = setTimeout(() => {
       Promise.all([
-        get<State>(`/api/state?scenario=${scenario}&t=${minutes}`),
+        get<State>(`/api/state?scenario=${scenario}&t=${minutes}${planQ}`),
         get<GeoJSON.FeatureCollection>(`/api/shadows?scenario=${scenario}&t=${minutes}`),
       ])
         .then(([s, sh]) => {
@@ -68,14 +127,14 @@ export default function App() {
         .catch((e) => setErr(String(e)));
     }, 90);
     return () => clearTimeout(timer);
-  }, [meta, scenario, minutes]);
+  }, [meta, scenario, minutes, planQ]);
 
   useEffect(() => {
     if (!meta || !from || !to) return;
-    get<RouteResponse>(`/api/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&scenario=${scenario}&t=${minutes}`)
+    get<RouteResponse>(`/api/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&scenario=${scenario}&t=${minutes}${planQ}`)
       .then(setRoutes)
       .catch(() => setRoutes(null));
-  }, [meta, from, to, scenario, minutes]);
+  }, [meta, from, to, scenario, minutes, planQ]);
 
   // ------------------------------------------------------------------ live node (SSE)
   useEffect(() => {
@@ -104,6 +163,18 @@ export default function App() {
     };
   }, [meta, liveNodeId]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setTool(null);
+        setPickMode(null);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && tab === "whatif") undo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   const onPick = useCallback(
     (ll: [number, number]) => {
       const ref = `${ll[0].toFixed(6)},${ll[1].toFixed(6)}`;
@@ -112,6 +183,24 @@ export default function App() {
       setPickMode(null);
     },
     [pickMode],
+  );
+
+  const onEdit = useCallback(
+    (e: EditClick) => {
+      if (!tool) return;
+      const [lon, lat] = e.lngLat;
+      setShowAfter(true);
+      setDraft((d) => {
+        if (tool === "erase") return e.itemIndex == null ? d : { ...d, items: d.items.filter((_, i) => i !== e.itemIndex) };
+        if (tool === "remove_tree") {
+          if (e.treeIndex == null || d.items.some((it) => it.kind === "remove_tree" && it.tree === e.treeIndex)) return d;
+          return { ...d, items: [...d.items, { kind: "remove_tree", tree: e.treeIndex }] };
+        }
+        if (tool === "tree") return { ...d, items: [...d.items, { kind: "tree", lon, lat, size: treeSize }] };
+        return { ...d, items: [...d.items, { kind: tool, lon, lat }] };
+      });
+    },
+    [tool, treeSize, setDraft],
   );
 
   const pos = useCallback(
@@ -126,25 +215,43 @@ export default function App() {
   );
   const fromPos = useMemo(() => pos(from), [pos, from]);
   const toPos = useMemo(() => pos(to), [pos, to]);
+  const changed = useMemo(() => (planKey && whatif?.result.edges?.changed) || [], [planKey, whatif]);
 
-  if (err) return <div className="fatal">Can't reach the Lumen server. Start it with <code>python backend/server.py</code>.<br /><small>{err}</small></div>;
-  if (!meta) return <div className="fatal">Lighting up Cremorne…</div>;
+  if (err) return <div className="fatal"><div><b>Can't reach the Lumen server.</b><br />Start it with <code>python backend/server.py</code>.<br /><small>{err}</small></div></div>;
+  if (!meta) return <div className="fatal"><div className="boot"><img src="/lumen.svg" alt="" width={48} height={48} /><span>Lighting up Cremorne…</span></div></div>;
 
+  const editing = tab === "whatif" && tool;
   return (
-    <div className="app">
-      <aside className="side">
+    <div className="app" style={{ ["--side" as string]: `${SIDE}px` }}>
+      <main className="stage">
+        <MapView
+          meta={meta} state={state} shadows={shadows} routes={routes?.routes ?? []} selectedMode={selectedMode}
+          toggles={toggles} from={fromPos} to={toPos} pickMode={pickMode} onPick={onPick}
+          liveCount={live.total} livePerMin={live.perMin} liveOnline={live.online} liveFlash={live.flash}
+          editTool={editing ? tool : null} onEdit={onEdit}
+          overlay={planActive ? whatif?.plan.overlay ?? null : null}
+          newShadows={planKey ? whatif?.result.new_shadows ?? null : null}
+          changed={changed} sidePad={SIDE}
+        />
+      </main>
+
+      <aside className="side glass">
         <header className="brand">
-          <img src="/lumen.svg" alt="" width={34} height={34} />
-          <div>
+          <div className="logo"><img src="/lumen.svg" alt="" width={30} height={30} /></div>
+          <div className="brand-t">
             <h1>Lumen</h1>
-            <p>700 windows, one precinct</p>
+            <p>Precinct Console · Cremorne</p>
           </div>
-          <span className="privacy-pill" title="Window nodes send counts only. No frames are stored or transmitted.">no images leave the node</span>
+          <button className="icon-btn" onClick={() => setShowPhone(true)} title="Open the phone app">
+            <Smartphone size={16} /> <span>Phone app</span>
+          </button>
         </header>
         <nav className="tabs">
           {TABS.map((t) => (
-            <button key={t.key} className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)}>
-              {t.label}
+            <button key={t.key} className={tab === t.key ? "on" : ""} onClick={() => { setTab(t.key); if (t.key !== "whatif") setTool(null); }}>
+              <t.icon size={17} strokeWidth={2} />
+              <span>{t.label}</span>
+              {t.key === "whatif" && planActive && <i className="tab-dot" />}
             </button>
           ))}
         </nav>
@@ -153,9 +260,18 @@ export default function App() {
             <RoutePanel
               meta={meta} from={from} to={to} setFrom={setFrom} setTo={setTo} routes={routes}
               selectedMode={selectedMode} setSelectedMode={setSelectedMode} pickMode={pickMode} setPickMode={setPickMode}
+              planActive={!!planKey}
             />
           )}
           {tab === "console" && <ConsolePanel meta={meta} state={state} live={live} liveNodeId={liveNodeId} scenario={scenario} />}
+          {tab === "whatif" && (
+            <WhatIfPanel
+              meta={meta} draft={draft} setDraft={setDraft} undo={undo} canUndo={history.length > 0}
+              tool={tool} setTool={setTool} treeSize={treeSize} setTreeSize={setTreeSize}
+              res={planActive ? whatif : null} busy={whatifBusy} scenario={scenario} minutes={minutes}
+              onShowRoutes={() => { setTab("route"); setTool(null); }}
+            />
+          )}
           {tab === "brief" && (
             <BriefPanel
               meta={meta} scenario={scenario} minutes={minutes} office={to}
@@ -173,42 +289,65 @@ export default function App() {
           {tab === "limits" && <LimitsPanel />}
         </div>
         <footer className="side-foot">
-          {meta.stats.buildings.toLocaleString()} buildings · {meta.stats.trees.toLocaleString()} trees · {meta.stats.network_km} km of paths · all computed on this laptop
+          <span>{meta.stats.buildings.toLocaleString()} buildings</span>
+          <span>{meta.stats.trees.toLocaleString()} trees</span>
+          <span>{meta.stats.network_km} km paths</span>
+          <span className="ok"><ShieldCheck size={12} /> all on this laptop</span>
         </footer>
       </aside>
-      <main className="stage">
-        <MapView
-          meta={meta} state={state} shadows={shadows} routes={routes?.routes ?? []} selectedMode={selectedMode}
-          toggles={toggles} from={fromPos} to={toPos} pickMode={pickMode} onPick={onPick}
-          liveCount={live.total} livePerMin={live.perMin} liveOnline={live.online} liveFlash={live.flash}
-        />
-        <LayerPanel toggles={toggles} setToggles={setToggles} />
-        {pickMode && <div className="pick-hint">Click the map to set {pickMode === "from" ? "the start" : "the destination"} · <button onClick={() => setPickMode(null)}>cancel</button></div>}
-        <LiveCard live={live} />
-        <TimeBar
-          scenarios={meta.scenarios} scenario={scenario} setScenario={setScenario}
-          minutes={minutes} setMinutes={setMinutes} state={state} loading={loading}
-        />
-      </main>
+
+      <LayerBar toggles={toggles} setToggles={setToggles} />
+      {planActive && (
+        <div className="plan-banner glass">
+          <Sprout size={15} />
+          <span><b>What-if plan</b> · {draft.items.length} change{draft.items.length > 1 ? "s" : ""}</span>
+          <span className="est">Model estimate</span>
+          <div className="seg mini">
+            <button className={!showAfter ? "on" : ""} onClick={() => setShowAfter(false)}><EyeOff size={13} /> Before</button>
+            <button className={showAfter ? "on" : ""} onClick={() => setShowAfter(true)}><Eye size={13} /> After</button>
+          </div>
+        </div>
+      )}
+      {pickMode && (
+        <div className="hint-pill"><MousePointerClick size={15} /> Click the map to set {pickMode === "from" ? "the start" : "the destination"} <button onClick={() => setPickMode(null)}>Cancel</button></div>
+      )}
+      {editing && (
+        <div className="hint-pill edit">
+          <MousePointerClick size={15} /> {TOOL_INFO[tool].hint(treeSize)} <kbd>Esc</kbd> <button onClick={() => setTool(null)}>Done</button>
+        </div>
+      )}
+      <LiveCard live={live} />
+      <TimeBar
+        scenarios={meta.scenarios} scenario={scenario} setScenario={setScenario}
+        minutes={minutes} setMinutes={setMinutes} state={state} loading={loading}
+      />
+      {showPhone && <PhoneModal meta={meta} onClose={() => setShowPhone(false)} />}
     </div>
   );
 }
 
-function LayerPanel({ toggles, setToggles }: { toggles: LayerToggles; setToggles: (t: LayerToggles) => void }) {
+function LayerBar({ toggles, setToggles }: { toggles: LayerToggles; setToggles: (t: LayerToggles) => void }) {
   const set = (k: keyof LayerToggles, v: LayerToggles[keyof LayerToggles]) => setToggles({ ...toggles, [k]: v });
+  const chips: { k: "shadows" | "trees" | "nodes" | "buildings3d"; label: string }[] = [
+    { k: "shadows", label: "Shadows" }, { k: "trees", label: "Canopy" }, { k: "nodes", label: "Nodes" }, { k: "buildings3d", label: "3D" },
+  ];
   return (
-    <div className="layers">
-      <div className="seg">
-        {(["shade", "crowd", "off"] as const).map((k) => (
-          <button key={k} className={toggles.network === k ? "on" : ""} onClick={() => set("network", k)}>
-            {k === "shade" ? "Shade" : k === "crowd" ? "Crowding" : "Paths off"}
-          </button>
-        ))}
+    <div className="layerbar glass">
+      <div className="lb-row">
+        <Layers size={15} className="muted-ic" />
+        <div className="seg">
+          {(["shade", "crowd", "comfort", "off"] as const).map((k) => (
+            <button key={k} className={toggles.network === k ? "on" : ""} onClick={() => set("network", k)}>
+              {k === "shade" ? "Shade" : k === "crowd" ? "Crowding" : k === "comfort" ? "Comfort" : "Off"}
+            </button>
+          ))}
+        </div>
+        <div className="chips">
+          {chips.map((c) => (
+            <button key={c.k} className={`chip-t ${toggles[c.k] ? "on" : ""}`} onClick={() => set(c.k, !toggles[c.k])}>{c.label}</button>
+          ))}
+        </div>
       </div>
-      <label><input type="checkbox" checked={toggles.shadows} onChange={(e) => set("shadows", e.target.checked)} /> Shadows</label>
-      <label><input type="checkbox" checked={toggles.trees} onChange={(e) => set("trees", e.target.checked)} /> Tree canopy</label>
-      <label><input type="checkbox" checked={toggles.nodes} onChange={(e) => set("nodes", e.target.checked)} /> Window nodes</label>
-      <label><input type="checkbox" checked={toggles.buildings3d} onChange={(e) => set("buildings3d", e.target.checked)} /> 3D</label>
       <Legend mode={toggles.network} />
     </div>
   );
@@ -218,15 +357,20 @@ function Legend({ mode }: { mode: LayerToggles["network"] }) {
   if (mode === "shade")
     return (
       <div className="legend">
-        <div className="grad shade" />
-        <div className="grad-l"><span>in sun</span><span>shaded side</span></div>
+        <span>in sun</span><div className="grad shade" /><span>shaded side</span>
+      </div>
+    );
+  if (mode === "comfort")
+    return (
+      <div className="legend">
+        <span>0</span><div className="grad comfort" /><span>100 Comfort Score</span>
       </div>
     );
   if (mode === "crowd")
     return (
       <div className="legend los">
         {["A", "B", "C", "D", "E", "F"].map((l, i) => (
-          <span key={l} style={{ background: ["#2f9e6b", "#8cc152", "#f2c230", "#f08a24", "#e0492f", "#a61e4d"][i] }}>{l}</span>
+          <span key={l} style={{ background: ["#10b981", "#84cc16", "#eab308", "#f97316", "#ef4444", "#9f1239"][i] }}>{l}</span>
         ))}
         <small>Fruin level of service, peak minute</small>
       </div>
@@ -238,13 +382,39 @@ function LiveCard({ live }: { live: Live }) {
   return (
     <div className={`live-card ${live.online ? "on" : ""}`}>
       <div className="live-head">
-        <span className="dot" /> node-00 · Cremorne St {live.online ? "LIVE" : "waiting for node"}
+        <span className="dot" /> node-00 · Cremorne St <b>{live.online ? "LIVE" : "waiting"}</b>
       </div>
       <div className="live-num" key={live.flash}>{live.total}</div>
       <div className="live-sub">
-        passers-by counted · {live.perMin.toFixed(0)}/min
+        passers-by · {live.perMin.toFixed(0)}/min
         {live.temp != null && <> · {live.temp}°C</>}
         {live.noise != null && <> · {live.noise} dB</>}
+      </div>
+    </div>
+  );
+}
+
+function PhoneModal({ meta, onClose }: { meta: Meta; onClose: () => void }) {
+  const [qr, setQr] = useState("");
+  const [role, setRole] = useState("");
+  const url = `${meta.lan_url}/m${role ? `?role=${role}` : ""}`;
+  useEffect(() => {
+    QRCode.toDataURL(url, { margin: 1, width: 360, color: { dark: "#0b1324", light: "#ffffff" } }).then(setQr).catch(() => setQr(""));
+  }, [url]);
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-x" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        <h2>Lumen on your phone</h2>
+        <p className="lede">Scan on the same Wi-Fi. No app, no login: pick a role and a couple of places. Settings stay on the phone.</p>
+        <div className="seg wide">
+          {[["", "Any role"], ["commuter", "Office worker"], ["driver", "Driver"], ["merchant", "Shop owner"]].map(([k, l]) => (
+            <button key={k} className={role === k ? "on" : ""} onClick={() => setRole(k)}>{l}</button>
+          ))}
+        </div>
+        <div className="qr">{qr ? <img src={qr} alt="QR code for the phone app" /> : <div className="qr-ph" />}</div>
+        <a className="qr-url" href={`/m${role ? `?role=${role}` : ""}`} target="_blank" rel="noreferrer">{url}</a>
+        <p className="fine">This QR code is what goes on café tables and light poles. Drivers can also text JOIN (SMS, simulated in the demo).</p>
       </div>
     </div>
   );

@@ -4,10 +4,16 @@
 
 s_e is the sunlit share of the shadier side of the segment, C_e a penalty from its Level of Service.
 H makes shade matter only on warm days: below 24 C the coolest route *is* the shortest route.
+
+Comfort Score (0-100, per segment, length-weighted for a route or the precinct):
+
+    comfort_e = 100 - 60 * s_e * min(H, 1) - 40 * min(C_e, 2) / 2
+
+so a fully sunlit segment at 34 C+ loses 60 points and a LOS E+ footpath loses 40.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import networkx as nx
 import numpy as np
@@ -39,6 +45,19 @@ class Conditions:
     crowd: CrowdFrame
     temp_c: float
     minutes: int
+    closed: np.ndarray | None = field(default=None)  # bool per edge: shut for works (what-if plans)
+
+    @property
+    def sun(self) -> np.ndarray:
+        """Sunlit share of each edge's shadier side (0 when the sun is down)."""
+        return (1.0 - self.shade.edge_shade) if self.shade.sun_up else np.zeros(len(self.shade.edge_shade))
+
+
+def comfort(cond: Conditions) -> np.ndarray:
+    """Comfort Score per edge, 0-100 (see module docstring)."""
+    h = min(1.0, heat_factor(cond.temp_c))
+    crowd = np.minimum(CROWD_PENALTY[cond.crowd.los], 2.0) / 2.0
+    return 100.0 - 60.0 * cond.sun * h - 40.0 * crowd
 
 
 class Router:
@@ -51,19 +70,47 @@ class Router:
     # ------------------------------------------------------------------ weights
     def weights(self, mode: str, cond: Conditions) -> np.ndarray:
         p = self.p
-        sun = (1.0 - cond.shade.edge_shade) if cond.shade.sun_up else np.zeros(len(p.e_len))
         if mode == "calmest" and cond.minutes >= NIGHT_START:
             # After dark "least crowded" can mean "deserted". Prefer lit, lively streets instead.
-            return p.e_len * (1.0 + 1.5 * self.quiet)
-        m = MODES[mode]
-        h = heat_factor(cond.temp_c)
-        c = CROWD_PENALTY[cond.crowd.los]
-        return p.e_len * (1.0 + m["alpha"] * sun * h + m["beta"] * c)
+            w = p.e_len * (1.0 + 1.5 * self.quiet)
+        else:
+            m = MODES[mode]
+            h = heat_factor(cond.temp_c)
+            c = CROWD_PENALTY[cond.crowd.los]
+            w = p.e_len * (1.0 + m["alpha"] * cond.sun * h + m["beta"] * c)
+        if cond.closed is not None:
+            w = np.where(cond.closed, np.inf, w)
+        return w
+
+    @staticmethod
+    def _weight_fn(w: np.ndarray):
+        # networkx treats a None weight as "edge does not exist": that is how closures work
+        return lambda u, v, d: None if w[d["eid"]] == np.inf else w[d["eid"]]
 
     def _path(self, src: int, dst: int, w: np.ndarray) -> list[int]:
-        g = self.p.graph
-        _, nodes = nx.bidirectional_dijkstra(g, src, dst, weight=lambda u, v, d: w[d["eid"]])
+        _, nodes = nx.bidirectional_dijkstra(self.p.graph, src, dst, weight=self._weight_fn(w))
         return nodes
+
+    def paths_from(self, src: int, w: np.ndarray) -> dict[int, list[int]]:
+        """Best path from src to every reachable node (one Dijkstra run)."""
+        _, paths = nx.single_source_dijkstra(self.p.graph, src, weight=self._weight_fn(w))
+        return paths
+
+    def path_stats(self, nodes: list[int], cond: Conditions, comfort_e: np.ndarray | None = None) -> dict:
+        """Minutes / sun minutes / crowded minutes of a node path, without steps or geometry."""
+        p = self.p
+        eids = np.array([p.edge_between(a, b) for a, b in zip(nodes[:-1], nodes[1:])], dtype=int)
+        if not len(eids):
+            return {"edges": eids, "minutes": 0.0, "sun_minutes": 0.0, "crowded_minutes": 0.0, "comfort": 100.0}
+        L = p.e_len[eids]
+        ce = comfort(cond) if comfort_e is None else comfort_e
+        return {
+            "edges": eids,
+            "minutes": float(L.sum()) / WALK_SPEED / 60,
+            "sun_minutes": float((L * cond.sun[eids]).sum()) / WALK_SPEED / 60,
+            "crowded_minutes": float(L[cond.crowd.los[eids] >= 3].sum()) / WALK_SPEED / 60,
+            "comfort": float(np.average(ce[eids], weights=L)) if L.sum() > 0 else 100.0,
+        }
 
     # ------------------------------------------------------------------ public
     def route(self, src: int, dst: int, mode: str, cond: Conditions, with_geometry: bool = True) -> dict:
@@ -79,6 +126,7 @@ class Router:
                 "extra_min": round(r["minutes"] - base["minutes"], 1),
                 "sun_min_saved": round(base["sun_minutes"] - r["sun_minutes"], 1),
                 "crowd_min_saved": round(base["crowded_minutes"] - r["crowded_minutes"], 1),
+                "comfort_gain": r["comfort"] - base["comfort"],
             }
             r["same_as_shortest"] = r["edges"] == base["edges"]
         return out
@@ -90,7 +138,7 @@ class Router:
             eids.append(p.edge_between(a, b))
         eids_arr = np.array(eids, dtype=int)
         lengths = p.e_len[eids_arr] if eids else np.zeros(0)
-        sun_share = (1 - cond.shade.edge_shade[eids_arr]) if cond.shade.sun_up else np.zeros(len(eids))
+        sun_share = cond.sun[eids_arr] if eids else np.zeros(0)
         los = cond.crowd.los[eids_arr] if eids else np.zeros(0, int)
         dist = float(lengths.sum())
         sun_m = float((lengths * sun_share).sum())
@@ -106,6 +154,7 @@ class Router:
             "shaded_pct": round(100 * (1 - sun_m / dist)) if dist > 0 else 100,
             "crowded_minutes": round(crowd_m / WALK_SPEED / 60, 1),
             "worst_los": LOS_LETTERS[int(los.max())] if len(los) else "A",
+            "comfort": round(float(np.average(comfort(cond)[eids_arr], weights=lengths))) if dist > 0 else 100,
             "edges": eids,
             "steps": self._steps(eids, cond),
         }
@@ -123,7 +172,7 @@ class Router:
             name = self.labels[e]
             if name in ("crossing", "laneway") and steps:
                 name = steps[-1]["street"]
-            sun = 0.0 if not cond.shade.sun_up else 1 - cond.shade.edge_shade[e]
+            sun = cond.sun[e]
             side = None
             if p.e_is_road[e] and cond.shade.sun_up and cond.shade.edge_side_gain[e] > 0.25:
                 left = p.e_left_compass[e]

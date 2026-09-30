@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Download, Sun, TrainFront, Users } from "lucide-react";
 import { LOS, LOS_COLORS, fmtTime, get, type Meta, type State, type StreetRow } from "../api";
 import type { Live } from "../App";
 
@@ -32,11 +33,15 @@ export default function ConsolePanel({ meta, state, live, liveNodeId, scenario }
         <>
           <section>
             <h3>Right now · {fmtTime(state.minutes)}</h3>
-            <div className="stat-row">
-              <Stat label="paths with a shaded side" value={`${Math.round(state.shaded_share * 100)}%`} />
-              <Stat label="km at LOS D or worse" value={(state.los_counts.D + state.los_counts.E + state.los_counts.F).toFixed(2)} />
-              <Stat label="leaving Richmond Stn / min" value={String(state.stop_outflow["train-richmond"] ?? 0)} />
+            <div className="now-grid">
+              <ComfortGauge value={state.comfort} />
+              <div className="stat-col">
+                <Stat icon={Sun} label="paths with a shaded side" value={`${Math.round(state.shaded_share * 100)}%`} />
+                <Stat icon={Users} label="km at LOS D or worse" value={(state.los_counts.D + state.los_counts.E + state.los_counts.F).toFixed(2)} />
+                <Stat icon={TrainFront} label="leaving Richmond Stn / min" value={String(state.stop_outflow["train-richmond"] ?? 0)} />
+              </div>
             </div>
+            <p className="fine">Comfort Score = 100 − 60 × sunlit share × heat weight − 40 × crowding penalty, per metre of footpath in Cremorne.</p>
           </section>
           <section className="two">
             <div>
@@ -98,7 +103,7 @@ export default function ConsolePanel({ meta, state, live, liveNodeId, scenario }
                 ))}
               </tbody>
             </table>
-            <a className="btn" href={`/api/report.csv?scenario=${scenario}`} download>Download CSV</a>
+            <a className="btn" href={`/api/report.csv?scenario=${scenario}`} download><Download size={14} /> Download CSV</a>
           </section>
         </>
       )}
@@ -127,11 +132,33 @@ export default function ConsolePanel({ meta, state, live, liveNodeId, scenario }
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, icon: I }: { label: string; value: string; icon: typeof Sun }) {
   return (
     <div className="stat">
-      <b>{value}</b>
-      <small>{label}</small>
+      <span className="stat-ic"><I size={15} /></span>
+      <div><b>{value}</b><small>{label}</small></div>
+    </div>
+  );
+}
+
+export function ComfortGauge({ value, size = 132, label = "Comfort Score" }: { value: number; size?: number; label?: string }) {
+  const r = 52, c = 2 * Math.PI * r, arc = 0.75;
+  const frac = Math.max(0, Math.min(1, value / 100));
+  const color = value >= 85 ? "#0d9488" : value >= 70 ? "#65a30d" : value >= 55 ? "#f59e0b" : "#e11d48";
+  return (
+    <div className="gauge" style={{ width: size }}>
+      <svg viewBox="0 0 128 128" width={size} height={size}>
+        <defs>
+          <linearGradient id="gg" x1="0" x2="1" y1="1" y2="0">
+            <stop offset="0" stopColor="#f59e0b" /><stop offset="0.5" stopColor="#facc15" /><stop offset="1" stopColor="#0d9488" />
+          </linearGradient>
+        </defs>
+        <circle cx="64" cy="64" r={r} fill="none" stroke="rgba(11,19,36,.08)" strokeWidth="11" strokeLinecap="round"
+          strokeDasharray={`${c * arc} ${c}`} transform="rotate(135 64 64)" />
+        <circle cx="64" cy="64" r={r} fill="none" stroke="url(#gg)" strokeWidth="11" strokeLinecap="round"
+          strokeDasharray={`${c * arc * frac} ${c}`} transform="rotate(135 64 64)" style={{ transition: "stroke-dasharray .6s ease" }} />
+      </svg>
+      <div className="gauge-v"><b style={{ color }}>{value.toFixed(0)}</b><small>{label}</small></div>
     </div>
   );
 }
