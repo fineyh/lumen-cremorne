@@ -1,0 +1,13 @@
+**/__pycache__
+**/*.pyc
+.git
+.claude
+frontend/node_modules
+frontend/src
+frontend/public
+pitch-media
+node
+data/cache
+data/whatif
+data/server.log
+*.pt

@@ -101,6 +101,8 @@ def _plan(key: str | None):
 
 def _lan_url() -> str:
     """Address phones on the same Wi-Fi can open (for the QR code on the Console)."""
+    if public := os.environ.get("LUMEN_PUBLIC_URL"):  # deployed behind a domain: the LAN IP is meaningless
+        return public.rstrip("/")
     ip = "127.0.0.1"
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
