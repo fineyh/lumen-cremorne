@@ -63,6 +63,9 @@ export default function BriefPanel({ meta, scenario, minutes, office, onShowRout
 
   return (
     <div className="brief">
+      <p className="fine audience">
+        What staff at precinct tenants see in their workplace Slack each morning. Ask Lumen answers in the same channel.
+      </p>
       <div className="office-pick">
         <label>Your office</label>
         <select value={officeId} onChange={(e) => setOfficeId(e.target.value)}>
