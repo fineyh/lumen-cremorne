@@ -91,11 +91,12 @@ In production the node would be an ESP32-S3 with a 24 GHz mmWave sensor, so ther
 
 ### Local LLM (optional)
 
-Install [Ollama](https://ollama.com) and run `ollama pull qwen2.5:7b`. The server detects it automatically and uses it to polish the Morning Brief and to do tool calling for Ask Lumen.
+Install [Ollama](https://ollama.com) and run `ollama pull qwen3.8:27b` (about 18 GB; needs a GPU with 24 GB of VRAM). The server detects it automatically and uses it to polish the Morning Brief and to do tool calling for Ask Lumen.
 
 - The LLM only rewrites wording. If any number in its output differs from what the backend computed, Lumen falls back to the deterministic template.
 - Without Ollama, the Brief uses the template and Ask Lumen uses rule-based routing. Every feature still works.
-- To switch models, set `LUMEN_MODEL=llama3.1:8b`.
+- Thinking is switched off on every request (`think: false`): both tasks are short and need a fast reply.
+- To switch models, set `LUMEN_MODEL`, for example `LUMEN_MODEL=qwen3.5:9b` on a machine without a GPU.
 
 ### Frontend dev mode
 
@@ -208,7 +209,7 @@ Mia is a fictional commuter.
 - **Backend:** Python, FastAPI, Shapely, NetworkX, NumPy; SSE for live updates; optional MQTT
 - **Frontend:** Vite, React, TypeScript, MapLibre GL JS; PWA for mobile
 - **Sensing:** OpenCV, YOLOv8n + ByteTrack (Ultralytics)
-- **LLM (optional):** Ollama with Qwen2.5-7B, fully local
+- **LLM (optional):** Ollama with Qwen3.8-27B, fully local
 
 ## Project layout
 

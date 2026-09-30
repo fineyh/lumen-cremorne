@@ -17,7 +17,7 @@ from .crowd import LOS_LETTERS
 from .engine import Lumen, fmt_time
 
 OLLAMA = os.environ.get("LUMEN_OLLAMA", "http://127.0.0.1:11434")
-MODEL = os.environ.get("LUMEN_MODEL", "qwen2.5:7b")
+MODEL = os.environ.get("LUMEN_MODEL", "qwen3.8:27b")
 DEFAULT_ORIGIN = "train-richmond"
 
 
@@ -143,7 +143,7 @@ def polish(lines: list[str], audience: str = "a Slack message for office workers
         "Return only the text.\n\n" + "\n".join(lines)
     )
     try:
-        r = requests.post(f"{OLLAMA}/api/generate", json={"model": model, "prompt": prompt, "stream": False,
+        r = requests.post(f"{OLLAMA}/api/generate", json={"model": model, "prompt": prompt, "stream": False, "think": False,
                                                           "options": {"temperature": 0.3}}, timeout=45)
         text = r.json()["response"].strip()
         out = [l.strip() for l in text.splitlines() if l.strip()]
@@ -378,7 +378,7 @@ def ask(lumen: Lumen, question: str, scenario: str, minutes: int, office_id: str
     if model:
         try:
             r = requests.post(f"{OLLAMA}/api/chat", timeout=40, json={
-                "model": model, "stream": False, "tools": TOOLS,
+                "model": model, "stream": False, "think": False, "tools": TOOLS,
                 "messages": [
                     {"role": "system", "content": "You are Lumen, a precinct assistant for Cremorne, Melbourne. "
                                                   "Always call exactly one tool."},
