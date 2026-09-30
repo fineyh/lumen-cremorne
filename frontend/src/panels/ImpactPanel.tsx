@@ -55,10 +55,16 @@ export default function ImpactPanel({ onShow }: { onShow: (scenario: string, min
         )}
       </div>
 
-      <div className="seg wide">
-        {ev.cases.map((x) => (
-          <button key={x.key} className={x.key === sel ? "on" : ""} onClick={() => setSel(x.key)}>{x.label}</button>
-        ))}
+      <div className="seg wide stack">
+        {ev.cases.map((x) => {
+          const [name, time] = x.label.split(" · ");
+          return (
+            <button key={x.key} className={x.key === sel ? "on" : ""} onClick={() => setSel(x.key)}>
+              <span>{name}</span>
+              {time && <small>{time}</small>}
+            </button>
+          );
+        })}
       </div>
       <CaseDetail c={c} />
       <button className="btn" onClick={() => onShow(c.scenario, c.minutes)}>See this moment on the map →</button>
