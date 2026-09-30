@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    proxy: { "/api": { target: "http://localhost:8000", changeOrigin: true } },
+    // LUMEN_API points the dev server at a backend on another port
+    proxy: { "/api": { target: process.env.LUMEN_API ?? "http://localhost:8000", changeOrigin: true } },
   },
 });
