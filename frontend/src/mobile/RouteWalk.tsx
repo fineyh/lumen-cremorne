@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Flag, Footprints, Navigation2 } from "lucide-react";
 import { fmtTime, MODE_COLORS, type Route, type WalkStep } from "../api";
 import MiniMap, { type Pin } from "./MiniMap";
-import { HEADING, Row, say, TURN_ICON, Walk } from "./WalkView";
+import { barrierMarks } from "./access";
+import { HEADING, Row, say, StepFlag, TURN_ICON, Walk } from "./WalkView";
 
 type Item = { k: "walk"; st: WalkStep; at: number } | { k: "end"; at: number };
 
 /** Follow a plain A to B walk (commute, meeting, anywhere) step by step, like a Nearby walk without the stop. */
-export default function RouteWalk({ route, start, from, to, hot, back = "Back", onClose }: {
-  route: Route; start: number; from: string; to: string; hot: boolean; back?: string; onClose: () => void;
+export default function RouteWalk({ route, start, from, to, hot, stepFree = false, back = "Back", onClose }: {
+  route: Route; start: number; from: string; to: string; hot: boolean; stepFree?: boolean; back?: string; onClose: () => void;
 }) {
   const color = MODE_COLORS[route.mode];
   const root = useRef<HTMLDivElement>(null);
@@ -69,9 +70,9 @@ export default function RouteWalk({ route, start, from, to, hot, back = "Back", 
       </section>
 
       <section className="m-card wk-now">
-        <MiniMap lines={lines} pins={pins} focus={focus} height={236} />
+        <MiniMap lines={lines} pins={pins} marks={barrierMarks(route.access?.barriers ?? [])} focus={focus} height={236} />
         <div className="wk-cur" key={i}>
-          {cur.k === "walk" ? <Walk st={cur.st} at={cur.at} leg={`To ${to}`} hot={hot} />
+          {cur.k === "walk" ? <Walk st={cur.st} at={cur.at} leg={`To ${to}`} hot={hot} stepFree={stepFree} />
             : <Row icon={Flag} tone="end" kicker={`${fmtTime(Math.round(cur.at))} · done`} title={`At ${to}`}
                 sub={`${route.minutes.toFixed(1)} min walk, ${route.sun_minutes.toFixed(1)} min of it in the sun`} />}
         </div>
@@ -94,7 +95,7 @@ export default function RouteWalk({ route, start, from, to, hot, back = "Back", 
               <span className="wk-row-ic"><TI size={15} /></span>
               <span className="wk-row-main">
                 <b>{it.k === "walk" ? say(it.st) : to}</b>
-                <small>{it.k === "walk" ? `${it.st.length_m} m${hot ? ` · ${it.st.shaded_pct}% shade` : ""}` : "Arrive"}</small>
+                <small>{it.k === "walk" ? <>{it.st.length_m} m{hot ? ` · ${it.st.shaded_pct}% shade` : ""}<StepFlag st={it.st} /></> : "Arrive"}</small>
               </span>
               <span className="wk-row-t">{fmtTime(Math.round(it.at))}</span>
             </button>

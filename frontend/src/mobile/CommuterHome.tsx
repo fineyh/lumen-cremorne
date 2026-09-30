@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, Clock, Compass, Footprints, MapPin, Navigation2, RotateCw, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock, WifiOff } from "lucide-react";
-import { get, LOS, LOS_COLORS, MODE_COLORS, type CommuterHome as Home, type Meta, type Route } from "../api";
+import { get, LOS, LOS_COLORS, MODE_COLORS, type CommuterHome as Home, type Meta, type Route, type StepFreeVs } from "../api";
+import { AccessNote, barrierMarks, barrierText, StepFreeSwitch, StopNotes } from "./access";
 import MiniMap from "./MiniMap";
 import RouteWalk from "./RouteWalk";
 import type { Settings } from "./MobileApp";
@@ -14,9 +15,11 @@ const POP: (NearbyPreset & { label: string })[] = [
   { want: "rest", budget: 20, trip: "back", t: 750, label: "Shady break" },
 ];
 
-type MeetingData = { to: string; to_id: string; time: string; temp_c: number; heat_matters: boolean; route: Route; shortest: Route };
+type MeetingData = { to: string; to_id: string; time: string; temp_c: number; heat_matters: boolean; route: Route; shortest: Route; step_free_vs: StepFreeVs | null };
 
-export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Meta; s: Settings; scenario: string; onNearby: (p: NearbyPreset) => void }) {
+export default function CommuterHome({ meta, s, scenario, onNearby, onStepFree }: {
+  meta: Meta; s: Settings; scenario: string; onNearby: (p: NearbyPreset) => void; onStepFree: (on: boolean) => void;
+}) {
   const [home, setHome] = useState<Home | null>(null);
   const [meeting, setMeeting] = useState<string>("");
   const [open, setOpen] = useState(false);
@@ -24,6 +27,7 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
   const [tick, setTick] = useState(0);
   const [walking, setWalking] = useState<"commute" | "meeting" | null>(null);
   const [pref, setPrefState] = useState<Pref>(loadPref);
+  const stepFree = !!s.stepFree;
   const setPref = (p: Pref) => {
     setPrefState(p);
     savePref(p);
@@ -33,8 +37,9 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
     setErr(false);
     const q = new URLSearchParams({ stop: s.stop, office: s.office, arrive: s.arrive, scenario });
     if (meeting) q.set("meeting", meeting);
+    if (stepFree) q.set("step_free", "true");
     get<Home>(`/api/me/commuter?${q}`).then(setHome).catch(() => setErr(true));
-  }, [s.stop, s.office, s.arrive, scenario, meeting, tick]);
+  }, [s.stop, s.office, s.arrive, scenario, meeting, stepFree, tick]);
 
   if (err) return <Offline onRetry={() => setTick(tick + 1)} />;
   if (!home) return <Skeleton />;
@@ -67,9 +72,9 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
   const offices = meta.offices.filter((o) => o.name && /[A-Za-z]{3}/.test(o.name) && o.id !== s.office);
 
   if (walking === "commute")
-    return <RouteWalk route={r} start={w.leave_minutes} from={home.from} to={home.to} hot={hot} back="Today" onClose={() => setWalking(null)} />;
+    return <RouteWalk route={r} start={w.leave_minutes} from={home.from} to={home.to} hot={hot} stepFree={home.step_free} back="Today" onClose={() => setWalking(null)} />;
   if (walking === "meeting" && md)
-    return <RouteWalk route={md.route} start={900} from="your building" to={md.to} hot={md.heat_matters} back="Today" onClose={() => setWalking(null)} />;
+    return <RouteWalk route={md.route} start={900} from="your building" to={md.to} hot={md.heat_matters} stepFree={home.step_free} back="Today" onClose={() => setWalking(null)} />;
 
   return (
     <div className="m-stack">
@@ -89,7 +94,10 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
         <p className="today-vs">vs the shortest route, same departure</p>
       </section>
 
+      {stepFree && <StopNotes meta={meta} refs={[s.stop]} />}
+
       <section className="m-card">
+        <StepFreeSwitch on={stepFree} onChange={onStepFree} />
         <div className="pref" role="radiogroup" aria-label="Route preference">
           {PREFS.map(({ key, label, icon: Icon }) => {
             const o = key === "auto" ? t : home.options?.[key];
@@ -112,7 +120,8 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
               ? <>It's mild today, so shade barely matters. Tap a faded line to compare.</>
               : <>Tap a faded line on the map to compare.</>}
         </p>
-        <MiniMap lines={mapLines} onPick={(i) => setPref(groups[i].modes.includes(r.mode) ? pref : groups[i].modes[0])} />
+        <MiniMap lines={mapLines} marks={barrierMarks(r.access.barriers)} onPick={(i) => setPref(groups[i].modes.includes(r.mode) ? pref : groups[i].modes[0])} />
+        <AccessNote access={r.access} vs={w.step_free_vs} stepFree={home.step_free} onStepFree={onStepFree} />
         <div className="route-sum" key={pref}>
           <div><b>{r.minutes.toFixed(1)}</b><small>min walk</small></div>
           <div><b>{r.sun_minutes.toFixed(1)}</b><small>min in sun</small></div>
@@ -174,9 +183,12 @@ export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Me
             </select>
           </label>
           <p>{meet.text}</p>
+          {!md.route.access.step_free && (
+            <p className="m-acc-line">{home.step_free ? "No fully step-free way: " : "On the way: "}{barrierText(md.route.access)}.</p>
+          )}
           <MiniMap height={150} lines={[
             { coords: md.route.geometry.coordinates, color: MODE_COLORS.coolest },
-          ]} />
+          ]} marks={barrierMarks(md.route.access.barriers)} />
           {!!md.route.walk_steps?.length && (
             <button className="m-btn go-start" onClick={() => setWalking("meeting")}><Navigation2 size={16} /> Walk it step by step</button>
           )}

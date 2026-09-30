@@ -9,7 +9,8 @@
   shade away from crowds, which is the part a normal map can't tell you.
 
 Every leg is routed three ways (shortest / coolest / calmest) and the fastest-feeling one that fits
-is kept, so on a hot day the walk out is shady too.
+is kept, so on a hot day the walk out is shady too. Step-free, every leg avoids steps and raised kerbs,
+and a place you can only reach past one is left out (counted as `not_step_free`).
 
 Places are OpenStreetMap POIs (data/raw/pois.json). Opening hours come from OSM when mapped;
 otherwise a typical window for that kind of place is assumed and the result says so.
@@ -453,7 +454,8 @@ def _coords(nodes: list[int], p) -> list[list[float]]:
 
 
 def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape: str = "return",
-           budget: float = 10.0, minutes: int = 750, scenario: str = "hot", prefer: str = "auto", limit: int = 6) -> dict:
+           budget: float = 10.0, minutes: int = 750, scenario: str = "hot", prefer: str = "auto", limit: int = 6,
+           step_free: bool = False) -> dict:
     if want not in CATEGORIES:
         raise KeyError(want)
     shape = shape if shape in SHAPES else "return"
@@ -471,9 +473,9 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
 
     a, a_name = lumen.resolve(origin)
     b, b_name = (lumen.resolve(dest) if shape == "via" else (a, a_name) if shape == "return" else (None, None))
-    cond1 = lumen.conditions(scenario, minutes, shade_minutes=_q15(minutes))
+    cond1 = lumen.conditions(scenario, minutes, shade_minutes=_q15(minutes), step_free=step_free)
     t2 = minutes + budget * 0.5
-    cond2 = cond1 if abs(t2 - minutes) < 8 else lumen.conditions(scenario, int(t2), shade_minutes=_q15(t2))
+    cond2 = cond1 if abs(t2 - minutes) < 8 else lumen.conditions(scenario, int(t2), shade_minutes=_q15(t2), step_free=step_free)
     ce1, ce2 = comfort(cond1), comfort(cond2)
     h = min(1.0, heat_factor(cond1.temp_c)) if cond1.shade.sun_up else 0.0
     night = minutes >= NIGHT_START or not cond1.shade.sun_up
@@ -486,7 +488,7 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
     if shape == "via":
         direct = r.path_stats(out["shortest"][1][b], cond1, ce1)["minutes"]
 
-    counts = {"places": 0, "closed": 0, "too_far": 0, "fit": 0}
+    counts = {"places": 0, "closed": 0, "too_far": 0, "fit": 0, "not_step_free": 0}
     need = math.inf
     cands = []
     for pl in P.of(want):
@@ -502,10 +504,20 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
                 best = (m, node, acc)
         if best is None:
             continue
-        min_walk = best[0] / WALK_SPEED / 60
         node, acc = best[1], best[2]
+        m_out = dist_out[node]
+        m_back = dist_back[node] if dist_back is not None else 0.0
+        if step_free:
+            # the costs above carry the step-free penalties: walk the actual paths instead
+            eo = r.path_stats(out["shortest"][1][node], cond1, ce1)["edges"]
+            eb = r.path_stats(back["shortest"][1][node], cond2, ce2)["edges"] if back else []
+            if not r.access_summary([*eo, *eb])["step_free"]:
+                counts["not_step_free"] += 1
+                continue
+            m_out, m_back = float(p.e_len[eo].sum()), float(p.e_len[eb].sum()) if back else 0.0
+        min_walk = (m_out + m_back + (2 if back else 1) * acc) / WALK_SPEED / 60
         acc_min = acc / WALK_SPEED / 60
-        arrive0 = minutes + dist_out[node] / WALK_SPEED / 60 + acc_min
+        arrive0 = minutes + m_out / WALK_SPEED / 60 + acc_min
         if stay:
             dwell = MIN_STAY
         else:
@@ -534,11 +546,14 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
             walk = so["minutes"] + sb["minutes"] + legs * acc_min
             if walk + (MIN_STAY if stay else dwell) > budget + 1e-6:
                 continue
+            access = r.access_summary([*so["edges"], *sb["edges"]])
+            if step_free and not access["step_free"]:
+                continue
             sun = so["sun_minutes"] + sb["sun_minutes"]
             crowd = so["crowded_minutes"] + sb["crowded_minutes"]
             feel = walk + ws * h * sun + wc * crowd
             opts[m] = {"mode": m, "so": so, "sb": sb, "out": out[m][1][node], "back": bn, "walk": walk,
-                       "sun": sun, "crowd": crowd, "feel": feel}
+                       "sun": sun, "crowd": crowd, "feel": feel, "access": access}
             if pick is None or feel < pick["feel"] - 1e-9:
                 pick = opts[m]
         if pick is None:
@@ -569,6 +584,7 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
             "crowded_min": round(pk["crowd"], 1),
             "comfort": round((so["comfort"] * so["minutes"] + sb["comfort"] * sb["minutes"]) / max(1e-6, so["minutes"] + sb["minutes"]))
             if so["minutes"] + sb["minutes"] > 0 else 100,
+            "access": pk["access"],
             "geometry": {"out": _coords(pk["out"], p), "back": None if shape == "return" and pk["back"] == pk["out"][::-1]
                          else _coords(pk["back"], p)},
         }
@@ -617,7 +633,7 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
     temp = round(cond1.temp_c, 1)
     return {
         "want": want, "label": cat["label"], "noun": cat["noun"][0], "nouns": cat["noun"][1], "kind": cat["kind"],
-        "verb": cat["verb"], "shape": shape, "prefer": prefer,
+        "verb": cat["verb"], "shape": shape, "prefer": prefer, "step_free": step_free,
         "budget": budget, "minutes": minutes, "time": fmt_time(minutes), "temp_c": temp,
         "hot": h > 0, "sun_up": bool(cond1.shade.sun_up), "night": night,
         "from": a_name, "to": b_name, "direct_min": round(direct, 1) if direct is not None else None,

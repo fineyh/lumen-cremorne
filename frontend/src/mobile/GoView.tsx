@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowDownUp, Clock, Footprints, Navigation2, Sun, Users } from "lucide-react";
 import { fmtTime, get, MODE_COLORS, type Meta, type Route, type RouteResponse } from "../api";
+import { AccessNote, barrierMarks, StepFreeSwitch, StopNotes } from "./access";
 import { Offline } from "./CommuterHome";
 import MiniMap from "./MiniMap";
 import type { Settings } from "./MobileApp";
@@ -27,7 +28,9 @@ function autoPick(routes: Route[]) {
   return [...routes].sort((a, b) => b.comfort - a.comfort || a.minutes - b.minutes)[0];
 }
 
-export default function GoView({ meta, s, scenario, init }: { meta: Meta; s: Settings; scenario: string; init: GoInit | null }) {
+export default function GoView({ meta, s, scenario, init, onStepFree }: {
+  meta: Meta; s: Settings; scenario: string; init: GoInit | null; onStepFree: (on: boolean) => void;
+}) {
   const [from, setFrom] = useState(init?.from ?? s.office);
   const [to, setTo] = useState(init?.to ?? s.stop);
   const [t, setT] = useState(init?.minutes ?? phoneNow());
@@ -37,6 +40,7 @@ export default function GoView({ meta, s, scenario, init }: { meta: Meta; s: Set
   const [tick, setTick] = useState(0);
   const [walking, setWalking] = useState(false);
   const req = useRef(0);
+  const stepFree = !!s.stepFree;
   const setPref = (p: Pref) => {
     setPrefState(p);
     savePref(p);
@@ -47,10 +51,11 @@ export default function GoView({ meta, s, scenario, init }: { meta: Meta; s: Set
     const id = ++req.current;
     setErr(false);
     const q = new URLSearchParams({ from, to, scenario, t: String(t), walk: "1" });
+    if (stepFree) q.set("step_free", "true");
     get<RouteResponse>(`/api/route?${q}`)
       .then((d) => id === req.current && setData(d))
       .catch(() => id === req.current && setErr(true));
-  }, [from, to, t, scenario, tick]);
+  }, [from, to, t, scenario, stepFree, tick]);
 
   const name = (ref: string) => {
     if (ref === s.office) return "Your building";
@@ -68,7 +73,7 @@ export default function GoView({ meta, s, scenario, init }: { meta: Meta; s: Set
   const color = r ? MODE_COLORS[r.mode] : "var(--ink)";
 
   if (walking && r)
-    return <RouteWalk route={r} start={t} from={name(from)} to={name(to)} hot={hot} back="Route" onClose={() => setWalking(false)} />;
+    return <RouteWalk route={r} start={t} from={name(from)} to={name(to)} hot={hot} stepFree={!!data?.step_free} back="Route" onClose={() => setWalking(false)} />;
 
   // one line per distinct path, the chosen one on top
   const same = (a: Route, b: Route) => a.edges.join() === b.edges.join();
@@ -117,7 +122,10 @@ export default function GoView({ meta, s, scenario, init }: { meta: Meta; s: Set
           <button className="go-swap" aria-label="Swap start and destination" onClick={() => { setFrom(to); setTo(from); }}><ArrowDownUp size={14} /></button>
           {select(to, setTo, "b")}
         </div>
+        <StepFreeSwitch on={stepFree} onChange={onStepFree} dark />
       </section>
+
+      {stepFree && <StopNotes meta={meta} refs={[from, to]} onUse={(stop, alt) => (stop === from ? setFrom(alt) : setTo(alt))} />}
 
       {from === to ? <p className="m-empty">Pick two different places.</p>
         : err ? <Offline onRetry={() => setTick(tick + 1)} />
@@ -143,10 +151,11 @@ export default function GoView({ meta, s, scenario, init }: { meta: Meta; s: Set
               {pref === "auto" ? <>The most comfortable way at {fmtTime(t)}: the <b style={{ color }}>{r.label.toLowerCase()}</b> route.</>
                 : r.note ?? (pref === "coolest" && !hot ? <>It's under 24°C then, so shade barely matters.</> : <>Tap a faded line on the map to compare.</>)}
             </p>
-            <MiniMap lines={lines} onPick={(k) => {
+            <MiniMap lines={lines} marks={barrierMarks(r.access.barriers)} onPick={(k) => {
               const hit = distinct[k];
               if (hit && !same(hit, r)) setPref(hit.mode);
             }} />
+            <AccessNote access={r.access} vs={data.step_free_vs} stepFree={data.step_free} onStepFree={onStepFree} />
             <div className="route-sum" key={`${pref}-${r.mode}`}>
               <div><b>{r.minutes.toFixed(1)}</b><small>min walk</small></div>
               <div><b>{r.sun_minutes.toFixed(1)}</b><small>min in sun</small></div>

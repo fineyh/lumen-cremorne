@@ -57,19 +57,19 @@ def street_list(lumen: Lumen) -> list[str]:
 
 
 # ---------------------------------------------------------------------- office worker
-def _best_departure(lumen: Lumen, a: int, b: int, scenario: str, arrive: int):
+def _best_departure(lumen: Lumen, a: int, b: int, scenario: str, arrive: int, step_free: bool = False):
     """Try leaving the station every 5 minutes before `arrive`; score each route and time.
 
     Returns the best (route, time) overall, the best time for each route mode, and the usual trip
-    (shortest route, latest departure)."""
+    (shortest route, latest departure). Step-free, every route avoids steps and raised kerbs."""
     r = lumen.router
-    probe = lumen.conditions(scenario, arrive - 10, shade_minutes=15 * round((arrive - 10) / 15))
+    probe = lumen.conditions(scenario, arrive - 10, shade_minutes=15 * round((arrive - 10) / 15), step_free=step_free)
     walk = r.path_stats(r._path(a, b, r.weights("shortest", probe)), probe)["minutes"]
     latest = int(5 * math.floor((arrive - walk - 1) / 5))
     per_mode: dict[str, tuple] = {}
     usual = None
     for leave in range(latest - 30, latest + 1, 5):
-        cond = lumen.conditions(scenario, leave, shade_minutes=15 * round(leave / 15))
+        cond = lumen.conditions(scenario, leave, shade_minutes=15 * round(leave / 15), step_free=step_free)
         h = min(1.5, heat_factor(cond.temp_c))
         ce = comfort(cond)
         for mode in MODES:
@@ -93,6 +93,9 @@ def _card(lumen: Lumen, a: int, b: int, cand: tuple, stop_name: str, office_name
     _, _, mode, leave, nodes, cond, st = cand
     route = lumen.router.describe(nodes, mode, cond, walk=True)
     short_now = lumen.router.path_stats(lumen.router._path(a, b, lumen.router.weights("shortest", cond)), cond)
+    step_free_vs = None
+    if cond.step_free:
+        step_free_vs = lumen.router.step_free_vs(a, b, cond, {"minutes": short_now["minutes"], "access": route["access"]})
     vs_short = {
         "sun_saved": round(short_now["sun_minutes"] - st["sun_minutes"], 1),
         "crowd_saved": round(short_now["crowded_minutes"] - st["crowded_minutes"], 1),
@@ -125,6 +128,7 @@ def _card(lumen: Lumen, a: int, b: int, cand: tuple, stop_name: str, office_name
     return {
         "leave_at": fmt_time(leave), "leave_minutes": leave, "arrive_at": fmt_time(round(leave + route["minutes"])),
         "temp_c": round(cond.temp_c, 1), "route": route, "vs_shortest": vs_short, "lines": lines,
+        "step_free_vs": step_free_vs,
     }
 
 
@@ -168,7 +172,7 @@ def _lunch(lumen: Lumen, office_node: int, scenario: str) -> dict | None:
             "streets": rows[:5]}
 
 
-def _meeting(lumen: Lumen, office: str, meeting: str | None, scenario: str) -> dict | None:
+def _meeting(lumen: Lumen, office: str, meeting: str | None, scenario: str, step_free: bool = False) -> dict | None:
     p = lumen.p
     me = next((o for o in p.offices if o["id"] == office), None)
     if meeting is None and me is not None:
@@ -179,11 +183,12 @@ def _meeting(lumen: Lumen, office: str, meeting: str | None, scenario: str) -> d
     if meeting is None:
         return None
     t = 900
-    res = lumen.routes(office, meeting, scenario, t, walk=True)
+    res = lumen.routes(office, meeting, scenario, t, step_free=step_free, walk=True)
     cool = next(r for r in res["routes"] if r["mode"] == "coolest")
     short = res["routes"][0]
     return {"to": res["to"], "to_id": meeting, "time": fmt_time(t), "temp_c": res["temp_c"],
-            "heat_matters": res["heat_factor"] > 0, "route": cool, "shortest": _slim(short)}
+            "heat_matters": res["heat_factor"] > 0, "route": cool, "shortest": _slim(short),
+            "step_free_vs": res.get("step_free_vs")}
 
 
 def _slim(r: dict) -> dict:
@@ -191,11 +196,11 @@ def _slim(r: dict) -> dict:
 
 
 def commuter(lumen: Lumen, stop: str, office: str, arrive: int, scenario: str, meeting: str | None = None,
-             llm: bool = True) -> dict:
+             llm: bool = True, step_free: bool = False) -> dict:
     sc = lumen.scenario(scenario)
     a, stop_name = lumen.resolve(stop)
     b, office_name = lumen.resolve(office)
-    best, per_mode, usual = _best_departure(lumen, a, b, scenario, arrive)
+    best, per_mode, usual = _best_departure(lumen, a, b, scenario, arrive, step_free)
     today = _card(lumen, a, b, best, stop_name, office_name, usual, auto=True)
     options = {m: _card(lumen, a, b, c, stop_name, office_name, usual, auto=False) for m, c in per_mode.items()}
     vs_usual = None
@@ -205,7 +210,7 @@ def commuter(lumen: Lumen, stop: str, office: str, arrive: int, scenario: str, m
                     "sun_min": round(u["sun_minutes"], 1), "comfort": round(u["comfort"])}
     heat = heat_factor(lumen.conditions(scenario, 900).temp_c) > 0
     lunch = _lunch(lumen, b, scenario)
-    meet = _meeting(lumen, office, meeting, scenario) if office in {o["id"] for o in lumen.p.offices} else None
+    meet = _meeting(lumen, office, meeting, scenario, step_free) if office in {o["id"] for o in lumen.p.offices} else None
     text, engine = polish(today["lines"], "a commuter's phone card") if llm else (today["lines"], "template")
 
     recs = []
@@ -234,7 +239,7 @@ def commuter(lumen: Lumen, stop: str, office: str, arrive: int, scenario: str, m
         "role": "commuter",
         "scenario": {"key": sc["key"], "label": sc["label"], "tmax": round(sc["tmax"]), "tmin": round(sc["tmin"]),
                      "date": str(sc["date"]), "heat_matters": heat},
-        "from": stop_name, "to": office_name, "arrive_by": fmt_time(arrive),
+        "from": stop_name, "to": office_name, "arrive_by": fmt_time(arrive), "step_free": step_free,
         "today": {**today, "vs_usual_time": vs_usual, "lines": text, "engine": engine},
         "options": options,
         "recommendations": recs,

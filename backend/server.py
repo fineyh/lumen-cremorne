@@ -372,19 +372,22 @@ def _hhmm(v: str, default: int) -> int:
 
 @app.get("/api/me/commuter")
 def me_commuter(stop: str = "train-richmond", office: str | None = None, arrive: str = "09:00",
-                scenario: str = "hot", meeting: str | None = None, llm: bool = True):
+                scenario: str = "hot", meeting: str | None = None, llm: bool = True, step_free: bool = False):
     try:
-        return fast(personal.commuter(lumen, stop, office or _default_office(), _hhmm(arrive, 540), scenario, meeting, llm))
+        return fast(personal.commuter(lumen, stop, office or _default_office(), _hhmm(arrive, 540), scenario, meeting, llm,
+                                      step_free=step_free))
     except (ValueError, KeyError) as exc:
         raise HTTPException(400, f"unknown place: {exc}")
 
 
 @app.get("/api/nearby")
 def nearby(want: str = "coffee", src: str | None = Query(None, alias="from"), to: str | None = None,
-           shape: str = "return", budget: float = 10, t: int = 750, scenario: str = "hot", prefer: str = "auto"):
+           shape: str = "return", budget: float = 10, t: int = 750, scenario: str = "hot", prefer: str = "auto",
+           step_free: bool = False):
     """Places you can get to, use and get back from inside `budget` minutes (see lumen/nearby.py)."""
     try:
-        return fast(nearby_mod.nearby(lumen, want, src or _default_office(), to, shape, budget, _minutes(t), scenario, prefer))
+        return fast(nearby_mod.nearby(lumen, want, src or _default_office(), to, shape, budget, _minutes(t), scenario, prefer,
+                                      step_free=step_free))
     except (ValueError, KeyError) as exc:
         raise HTTPException(400, f"bad request: {exc}")
 

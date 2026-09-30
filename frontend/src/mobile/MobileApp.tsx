@@ -23,6 +23,8 @@ export type Settings = {
   open: string;
   close: string;
   channel: "web" | "sms";
+  /** plan every walk step-free (wheelchair, pram, walking frame) */
+  stepFree?: boolean;
 };
 
 const KEY = "lumen.phone.settings";
@@ -82,6 +84,13 @@ export default function MobileApp() {
     setSettings(s);
     setView(s?.channel === "sms" ? "sms" : "home");
   };
+  // flipped from any walk screen: remembered with the rest of the settings, without leaving the screen
+  const setStepFree = (on: boolean) => {
+    if (!settings) return;
+    const s = { ...settings, stepFree: on };
+    storeSettings(s);
+    setSettings(s);
+  };
 
   const body = () => {
     if (!meta && metaErr) return <Offline onRetry={() => setMetaTry(metaTry + 1)} />;
@@ -90,12 +99,12 @@ export default function MobileApp() {
       return <Onboarding meta={meta} initial={settings} presetRole={presetRole} onDone={save} onReset={() => save(null)} />;
     if (view === "sms") return <SmsSim />;
     if (settings.role === "commuter") {
-      if (view === "nearby") return <NearbyView meta={meta} s={settings} scenario={scenario} preset={preset} />;
-      if (view === "go") return <GoView key={go.n} meta={meta} s={settings} scenario={scenario} init={go.init} />;
+      if (view === "nearby") return <NearbyView meta={meta} s={settings} scenario={scenario} preset={preset} onStepFree={setStepFree} />;
+      if (view === "go") return <GoView key={go.n} meta={meta} s={settings} scenario={scenario} init={go.init} onStepFree={setStepFree} />;
       if (view === "ask") return <AskView s={settings} scenario={scenario} msgs={askMsgs} setMsgs={setAskMsgs} onRoute={openGo} />;
     }
     switch (settings.role) {
-      case "commuter": return <CommuterHome meta={meta} s={settings} scenario={scenario} onNearby={openNearby} />;
+      case "commuter": return <CommuterHome meta={meta} s={settings} scenario={scenario} onNearby={openNearby} onStepFree={setStepFree} />;
       case "driver": return <DriverHome s={settings} scenario={scenario} onSms={() => setView("sms")} />;
       case "merchant": return <MerchantHome meta={meta} s={settings} scenario={scenario} />;
       default: return <CouncilHome scenario={scenario} />;

@@ -102,7 +102,7 @@ class Lumen:
         return sc
 
     def conditions(self, scenario: str, minutes: int, temp: float | None = None, plan: Plan | None = None,
-                   shade_minutes: int | None = None) -> Conditions:
+                   shade_minutes: int | None = None, step_free: bool = False) -> Conditions:
         """Shade + crowd + temperature at a time; `plan` overlays a what-if plan on the base data.
 
         `shade_minutes` lets callers reuse a nearby pre-computed shadow frame (shade moves slowly,
@@ -112,7 +112,8 @@ class Lumen:
         t = temp if temp is not None else temp_at(sc, minutes)
         sm = minutes if shade_minutes is None else shade_minutes
         shade = self.whatif.frame(plan, sc["date"], sm) if plan else self.shade.frame(sc["date"], sm)
-        return Conditions(shade, self.crowd.frame(minutes), t, minutes, closed=plan.closed if plan else None)
+        return Conditions(shade, self.crowd.frame(minutes), t, minutes, closed=plan.closed if plan else None,
+                          step_free=step_free)
 
     def resolve(self, ref: str) -> tuple[int, str]:
         """A stop id, office id or 'lon,lat' -> (graph node, display name)."""
@@ -221,8 +222,7 @@ class Lumen:
                plan: Plan | None = None, step_free: bool = False, walk: bool = False) -> dict:
         a, a_name = self.resolve(src)
         b, b_name = self.resolve(dst)
-        cond = self.conditions(scenario, minutes, temp, plan)
-        cond.step_free = step_free
+        cond = self.conditions(scenario, minutes, temp, plan, step_free=step_free)
         routes = self.router.routes(a, b, cond, walk)
         out = {
             "from": a_name, "to": b_name, "time": fmt_time(minutes), "temp_c": round(cond.temp_c, 1),
@@ -232,15 +232,7 @@ class Lumen:
             "routes": routes,
         }
         if step_free:
-            # what going step-free costs: compare with the plain shortest walk
-            cond.step_free = False
-            plain = self.router.route(a, b, "shortest", cond, with_geometry=False)
-            acc = plain["access"]
-            out["step_free_vs"] = {
-                "extra_min": round(routes[0]["minutes"] - plain["minutes"], 1),
-                "avoided_steps": acc["steps"], "avoided_kerbs": acc["kerbs"] + acc["blocked"],
-                "possible": routes[0]["access"]["step_free"],
-            }
+            out["step_free_vs"] = self.router.step_free_vs(a, b, cond, routes[0])
         return out
 
     def street_table(self, scenario: str = "hot") -> list[dict]:

@@ -81,11 +81,13 @@ export type RouteAccess = {
   step_free: boolean; steps: number; kerbs: number; blocked: number;
   signal_crossings: number; unmarked_crossings: number; rough_m: number; barriers: Barrier[];
 };
+/** What going step-free costs against the plain shortest walk; `possible` false = no fully step-free way. */
+export type StepFreeVs = { extra_min: number; avoided_steps: number; avoided_kerbs: number; possible: boolean };
 export type RouteResponse = {
   from: string; to: string; time: string; temp_c: number; heat_factor: number; plan: string | null; routes: Route[];
   step_free: boolean;
-  /** only when step_free: what avoiding steps costs against the plain shortest walk */
-  step_free_vs?: { extra_min: number; avoided_steps: number; avoided_kerbs: number; possible: boolean };
+  /** only when step_free */
+  step_free_vs?: StepFreeVs;
 };
 
 // ------------------------------------------------------------------ what-if
@@ -146,11 +148,12 @@ export type Walk = {
   leave_at: string; leave_minutes: number; arrive_at: string; temp_c: number; route: Route;
   vs_shortest: { sun_saved: number; crowd_saved: number; extra_min: number };
   lines: string[];
+  step_free_vs: StepFreeVs | null;
 };
 export type CommuterHome = {
   role: "commuter";
   scenario: { key: string; label: string; tmax: number; tmin: number; date: string; heat_matters: boolean };
-  from: string; to: string; arrive_by: string;
+  from: string; to: string; arrive_by: string; step_free: boolean;
   today: Walk & {
     vs_usual_time: { leave: string; crowded_min: number; sun_min: number; comfort: number } | null;
     engine: string;
@@ -171,20 +174,23 @@ export type NearbyPlace = {
   hours: { state: "open" | "assumed_open" | "always"; text: string | null; closes: number | null; assumed?: boolean };
   spot?: { shade_pct: number; shade_m2: number | null; shade_ok: boolean; seats: number; covered: boolean; park: boolean };
   chips: NearbyChip[];
+  /** out and back together */
+  access: RouteAccess;
   geometry: { out: [number, number][]; back: [number, number][] | null };
   steps: { out: WalkStep[]; back: WalkStep[] | null };
   /** every way of walking it that still fits the budget; the fields above are the "auto" pick */
   options: Partial<Record<Route["mode"], NearbyWalk>>;
 };
 export type NearbyWalk = Pick<NearbyPlace, "mode" | "route_label" | "walk_out" | "walk_back" | "walk" | "dwell" | "total" | "spare"
-  | "detour" | "arrive_at" | "leave_at" | "back_at" | "sun_min" | "shaded_pct" | "crowded_min" | "comfort" | "geometry" | "chips" | "steps">;
+  | "detour" | "arrive_at" | "leave_at" | "back_at" | "sun_min" | "shaded_pct" | "crowded_min" | "comfort" | "geometry" | "chips" | "steps" | "access">;
 export type Turn = "start" | "straight" | "slight-left" | "slight-right" | "left" | "right" | "uturn";
-export type WalkStep = Step & { turn: Turn; heading: string; minutes: number; path: [number, number][] };
+export type WalkStep = Step & { turn: Turn; heading: string; minutes: number; path: [number, number][]; access?: RouteAccess };
 export type NearbyResponse = {
   want: string; label: string; noun: string; nouns: string; kind: "errand" | "stay"; verb: string;
-  shape: "return" | "via" | "oneway"; prefer: string; budget: number; minutes: number; time: string; temp_c: number;
+  shape: "return" | "via" | "oneway"; prefer: string; step_free: boolean; budget: number; minutes: number; time: string; temp_c: number;
   hot: boolean; sun_up: boolean; night: boolean; from: string; to: string | null; direct_min: number | null;
-  counts: { places: number; closed: number; too_far: number; fit: number }; need_min: number | null;
+  /** not_step_free: places only reachable past steps or a raised kerb (step-free searches only) */
+  counts: { places: number; closed: number; too_far: number; fit: number; not_step_free: number }; need_min: number | null;
   results: NearbyPlace[]; note: string;
 };
 
@@ -307,4 +313,18 @@ export function placeName(meta: Meta, ref: string): string {
   const o = meta.offices.find((x) => x.id === ref);
   if (o) return o.name ?? `${o.street ?? "Office"} building`;
   return "Dropped pin";
+}
+
+/** Tram stops without a level-access platform, and where to board step-free instead on the same route. */
+export function stopWarnings(meta: Meta, refs: string[]) {
+  const out: { stop: Stop; alt: Stop | null }[] = [];
+  for (const ref of refs) {
+    const s = meta.stops.find((x) => x.id === ref);
+    if (!s || s.kind !== "tram" || s.access?.wheelchair !== "no") continue;
+    const routes = s.access.routes ?? [];
+    const alts = meta.stops.filter((x) => x.kind === "tram" && x.access?.wheelchair === "yes" && (x.access.routes ?? []).some((r) => routes.includes(r)));
+    const d = (x: Stop) => (x.lon - s.lon) ** 2 + (x.lat - s.lat) ** 2;
+    out.push({ stop: s, alt: alts.sort((a, b) => d(a) - d(b))[0] ?? null });
+  }
+  return out;
 }

@@ -18,7 +18,7 @@ there's no other way), rough surfaces cost 2.5x and unsignalised crossings a lit
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import networkx as nx
 import numpy as np
@@ -187,6 +187,17 @@ class Router:
             out["walk_steps"] = self.walk_steps(nodes, cond)
         return out
 
+    def step_free_vs(self, src: int, dst: int, cond: Conditions, route: dict) -> dict:
+        """What going step-free costs: a step-free `route` against the plain shortest walk."""
+        plain = replace(cond, step_free=False)
+        st = self.path_stats(self._path(src, dst, self.weights("shortest", plain)), plain)
+        acc = self.access_summary(st["edges"])
+        return {
+            "extra_min": round(route["minutes"] - st["minutes"], 1),
+            "avoided_steps": acc["steps"], "avoided_kerbs": acc["kerbs"] + acc["blocked"],
+            "possible": route["access"]["step_free"],
+        }
+
     def access_summary(self, eids: list[int]) -> dict:
         """What a wheelchair user meets on this route: barriers (with where they are) and crossings.
         Consecutive edges of the same kind count once (one flight of steps, one crossing)."""
@@ -311,6 +322,8 @@ class Router:
                 "shady_side": side if side and g["sides"][side] > 0.4 * g["length_m"] else None,
                 "los": LOS_LETTERS[g["los"]],
                 "path": ring_to_lonlat(xy[g["i0"]:g["i1"] + 1]),
+                # what's on this stretch for a wheelchair or pram, so the walk can warn before you get there
+                "access": self.access_summary([p.edge_between(a, b) for a, b in zip(nodes[g["i0"]:g["i1"]], nodes[g["i0"] + 1:g["i1"] + 1])]),
             })
         return out
 

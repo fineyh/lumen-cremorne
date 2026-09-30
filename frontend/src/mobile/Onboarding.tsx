@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Briefcase, Building2, Check, Lock, MessageSquare, Store, Truck } from "lucide-react";
 import type { Meta, Role } from "../api";
+import { StepFreeSwitch, StopNotes } from "./access";
 import type { Settings } from "./MobileApp";
 
 const ROLES: { key: Role; label: string; sub: string; icon: typeof Truck }[] = [
@@ -23,7 +24,7 @@ export default function Onboarding({ meta, initial, presetRole, onDone, onReset 
   );
   const [step, setStep] = useState(initial || presetRole ? 1 : 0);
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS({ ...s, [k]: v });
-  const stops = meta.stops.filter((x) => MAIN_STOPS.includes(x.id));
+  const stops = meta.stops.filter((x) => MAIN_STOPS.includes(x.id) || x.id === s.stop);
   const offices = meta.offices.filter((o) => o.name && /[A-Za-z]{3}/.test(o.name));
   const nodes = meta.nodes;
 
@@ -63,6 +64,8 @@ export default function Onboarding({ meta, initial, presetRole, onDone, onReset 
             {offices.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select></label>
           <label>Start work at<input type="time" value={s.arrive} onChange={(e) => set("arrive", e.target.value)} /></label>
+          <StepFreeSwitch on={!!s.stepFree} onChange={(on) => set("stepFree", on)} />
+          {s.stepFree && <StopNotes meta={meta} refs={[s.stop]} onUse={(_, alt) => set("stop", alt)} />}
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { Accessibility, ArrowDownUp, CircleCheck, Crosshair, Footprints, Sparkles, Sprout, Sun, TreeDeciduous, TriangleAlert, Users } from "lucide-react";
-import { LOS, LOS_COLORS, MODE_COLORS, placeName, type Meta, type Route, type RouteResponse, type Stop } from "../api";
+import { LOS, LOS_COLORS, MODE_COLORS, placeName, stopWarnings, type Meta, type Route, type RouteResponse } from "../api";
 
 type Props = {
   meta: Meta;
@@ -19,20 +19,6 @@ type Props = {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const flights = (n: number) => plural(n, "flight", "flights") + " of steps";
-
-/** Tram stops without a level-access platform, and where to board step-free instead on the same route. */
-function stopWarnings(meta: Meta, refs: string[]) {
-  const out: { stop: Stop; alt: Stop | null }[] = [];
-  for (const ref of refs) {
-    const s = meta.stops.find((x) => x.id === ref);
-    if (!s || s.kind !== "tram" || s.access?.wheelchair !== "no") continue;
-    const routes = s.access.routes ?? [];
-    const alts = meta.stops.filter((x) => x.kind === "tram" && x.access?.wheelchair === "yes" && (x.access.routes ?? []).some((r) => routes.includes(r)));
-    const d = (x: Stop) => (x.lon - s.lon) ** 2 + (x.lat - s.lat) ** 2;
-    out.push({ stop: s, alt: alts.sort((a, b) => d(a) - d(b))[0] ?? null });
-  }
-  return out;
-}
 
 const MAIN_STOPS = [
   "train-richmond",

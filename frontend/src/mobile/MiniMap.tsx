@@ -20,9 +20,10 @@ type Line = { coords: [number, number][]; color: string; dashed?: boolean; muted
 export type Pin = { coord: [number, number]; label: string; icon?: ReactNode; cls: string; title?: string; color?: string; onClick?: () => void };
 
 /** A small, light map: route lines and their endpoints. Muted lines sit underneath and can be tapped.
- *  With `focus` the map glides to those points instead of framing everything. */
-export default function MiniMap({ lines, height = 190, onPick, pins, focus }: {
-  lines: Line[]; height?: number; onPick?: (i: number) => void; pins?: Pin[]; focus?: [number, number][];
+ *  With `focus` the map glides to those points instead of framing everything. `marks` are extra markers
+ *  along the way (steps, raised kerbs) that leave the route ends as they are. */
+export default function MiniMap({ lines, height = 190, onPick, pins, marks, focus }: {
+  lines: Line[]; height?: number; onPick?: (i: number) => void; pins?: Pin[]; marks?: Pin[]; focus?: [number, number][];
 }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -34,13 +35,15 @@ export default function MiniMap({ lines, height = 190, onPick, pins, focus }: {
   pickRef.current = onPick;
   const pinsRef = useRef(pins);
   pinsRef.current = pins;
+  const marksRef = useRef(marks);
+  marksRef.current = marks;
   const focusRef = useRef(focus);
   focusRef.current = focus;
   const pinMarkers = useRef<{ marker: maplibregl.Marker; root?: Root }[]>([]);
   const shape = JSON.stringify(lines.map((l) => [l.coords[0], l.coords[l.coords.length - 1], l.coords.length]));
   const look = JSON.stringify(lines.map((l) => [l.color, !!l.muted, !!l.dashed, l.width]));
   const focusKey = JSON.stringify(focus ?? null);
-  const pinKey = JSON.stringify(pins?.map((p) => [p.coord, p.label, p.cls, p.color]) ?? null);
+  const pinKey = JSON.stringify([pins, marks].map((ps) => ps?.map((p) => [p.coord, p.label, p.cls, p.color]) ?? null));
 
   useEffect(() => {
     let dead = false;
@@ -139,7 +142,7 @@ export default function MiniMap({ lines, height = 190, onPick, pins, focus }: {
       if (root) queueMicrotask(() => root.unmount()); // not while React is rendering
     }
     pinMarkers.current = [];
-    for (const p of pinsRef.current ?? []) {
+    for (const p of [...(pinsRef.current ?? []), ...(marksRef.current ?? [])]) {
       const d = document.createElement("div");
       d.className = `mm-pin ${p.cls}`;
       let root: Root | undefined;

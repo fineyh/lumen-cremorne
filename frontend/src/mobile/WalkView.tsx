@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUp, ArrowUpLeft, ArrowUpRight, Briefcase, ChevronLeft, ChevronRight, CornerUpLeft, CornerUpRight, Flag, Navigation2,
-  TrainFront, TreeDeciduous, Undo2, Users, type LucideIcon,
+  TrafficCone, TrainFront, TreeDeciduous, TriangleAlert, Undo2, Users, type LucideIcon,
 } from "lucide-react";
 import { fmtTime, LOS, MODE_COLORS, type NearbyPlace, type NearbyResponse, type Turn, type WalkStep } from "../api";
+import { barrierMarks, stepBarrier } from "./access";
 import MiniMap, { type Pin } from "./MiniMap";
 import { CATS, type Trip } from "./NearbyView";
 
@@ -33,6 +34,7 @@ export function say(st: WalkStep) {
 
 /** Follow the chosen walk step by step inside Lumen, so you stay on the shady, calmer way it picked. */
 export default function WalkView({ data, place, trip, onClose }: { data: NearbyResponse; place: NearbyPlace; trip: Trip; onClose: () => void }) {
+  const stepFree = data.step_free;
   const cat = CATS[data.want];
   const Icon = cat.icon;
   const stay = data.kind === "stay";
@@ -111,9 +113,9 @@ export default function WalkView({ data, place, trip, onClose }: { data: NearbyR
       </section>
 
       <section className="m-card wk-now">
-        <MiniMap lines={lines} pins={pins} focus={focus} height={236} />
+        <MiniMap lines={lines} pins={pins} marks={barrierMarks(place.access?.barriers ?? [])} focus={focus} height={236} />
         <div className="wk-cur" key={i}>
-          {cur.k === "walk" ? <Walk st={cur.st} at={cur.at} leg={legLabel(cur.leg)} hot={data.hot} />
+          {cur.k === "walk" ? <Walk st={cur.st} at={cur.at} leg={legLabel(cur.leg)} hot={data.hot} stepFree={stepFree} />
             : cur.k === "stop" ? (
               <Row icon={Icon} tone="place" kicker={`${fmtTime(Math.round(cur.at))} · you're there`}
                 title={stay ? `Sit at ${place.name}` : `Arrive at ${place.name}`}
@@ -147,7 +149,7 @@ export default function WalkView({ data, place, trip, onClose }: { data: NearbyR
               <span className="wk-row-main">
                 <b>{it.k === "walk" ? say(it.st) : it.k === "stop" ? place.name : trip === "back" ? "Your desk" : endName}</b>
                 <small>
-                  {it.k === "walk" ? `${it.st.length_m} m${data.hot ? ` · ${it.st.shaded_pct}% shade` : ""}`
+                  {it.k === "walk" ? <>{it.st.length_m} m{data.hot ? ` · ${it.st.shaded_pct}% shade` : ""}<StepFlag st={it.st} /></>
                     : it.k === "stop" ? (stay ? `${Math.floor(place.dwell)} min sit` : `~${n1(place.dwell)} min ${data.verb || "there"}`) : "Arrive"}
                 </small>
               </span>
@@ -164,14 +166,26 @@ export default function WalkView({ data, place, trip, onClose }: { data: NearbyR
   );
 }
 
-export function Walk({ st, at, leg, hot }: { st: WalkStep; at: number; leg: string; hot: boolean }) {
+/** " · Steps" after a step in the list, when it has steps or a raised kerb on it. */
+export function StepFlag({ st }: { st: WalkStep }) {
+  const a = st.access;
+  if (!a || a.step_free) return null;
+  return <em className="wk-flag"> · {a.steps ? "Steps" : a.kerbs ? "Raised kerb" : "Not step-free"}</em>;
+}
+
+export function Walk({ st, at, leg, hot, stepFree = false }: { st: WalkStep; at: number; leg: string; hot: boolean; stepFree?: boolean }) {
   const busy = LOS.indexOf(st.los) >= 3;
+  const barrier = stepBarrier(st.access);
+  // step-free, a crossing without signals means waiting for a gap in traffic, with no kerb ramp promised
+  const unmarked = stepFree && (st.access?.unmarked_crossings ?? 0) > 0;
   return (
     <>
       <Row icon={TURN_ICON[st.turn]} rot={st.turn === "start" ? HEADING.indexOf(st.heading) * 45 : 0} tone="turn" kicker={`${leg} · ${fmtTime(Math.round(at))}`} title={say(st)}
         sub={`${st.length_m} m · about ${Math.max(1, Math.round(st.minutes))} min${hot ? ` · ${st.shaded_pct}% in shade` : ""}`} />
-      {(st.shady_side || busy) && (
+      {(st.shady_side || busy || barrier || unmarked) && (
         <div className="nb-chips">
+          {barrier && <span className="nb-chip warn"><TriangleAlert size={12} /> {barrier}{stepFree ? ", no step-free way round" : ""}</span>}
+          {unmarked && <span className="nb-chip unknown"><TrafficCone size={12} /> Crossing without signals</span>}
           {st.shady_side && <span className="nb-chip shade"><TreeDeciduous size={12} /> Keep to the {st.shady_side} side, it's shadier</span>}
           {busy && <span className="nb-chip busy"><Users size={12} /> Busy footpath here</span>}
         </div>

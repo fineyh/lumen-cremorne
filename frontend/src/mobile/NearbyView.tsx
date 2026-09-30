@@ -4,6 +4,7 @@ import {
   Navigation2, Pill, Plus, RotateCcw, ShoppingBasket, Sun, Toilet, TrainFront, TreeDeciduous, Trees, Users, UtensilsCrossed, type LucideIcon,
 } from "lucide-react";
 import { fmtTime, get, MODE_COLORS, type Meta, type NearbyChip, type NearbyPlace, type NearbyResponse, type NearbyWalk, type Route } from "../api";
+import { AccessNote, barrierMarks, StepFreeSwitch } from "./access";
 import { Offline } from "./CommuterHome";
 import MiniMap, { type Pin } from "./MiniMap";
 import type { Settings } from "./MobileApp";
@@ -64,7 +65,9 @@ function store(v: { want: string; budget: number; trip: Trip }) {
   }
 }
 
-export default function NearbyView({ meta, s, scenario, preset }: { meta: Meta; s: Settings; scenario: string; preset: NearbyPreset | null }) {
+export default function NearbyView({ meta, s, scenario, preset, onStepFree }: {
+  meta: Meta; s: Settings; scenario: string; preset: NearbyPreset | null; onStepFree: (on: boolean) => void;
+}) {
   const saved = load();
   const [want, setWant] = useState(preset?.want ?? saved?.want ?? "coffee");
   const [budget, setBudget] = useState(preset?.budget ?? saved?.budget ?? CATS[want].budget);
@@ -77,6 +80,7 @@ export default function NearbyView({ meta, s, scenario, preset }: { meta: Meta; 
   const [sel, setSel] = useState(0);
   const [walk, setWalk] = useState<{ data: NearbyResponse; place: NearbyPlace; trip: Trip } | null>(null);
   const req = useRef(0);
+  const stepFree = !!s.stepFree;
 
   useEffect(() => {
     if (!preset) return;
@@ -94,6 +98,7 @@ export default function NearbyView({ meta, s, scenario, preset }: { meta: Meta; 
     setBusy(true);
     setErr(false);
     const q = new URLSearchParams({ want, budget: String(budget), t: String(t), scenario });
+    if (stepFree) q.set("step_free", "true");
     if (trip === "back") q.set("from", s.office);
     else {
       q.set("shape", "via");
@@ -112,7 +117,7 @@ export default function NearbyView({ meta, s, scenario, preset }: { meta: Meta; 
         .finally(() => id === req.current && setBusy(false));
     }, 160);
     return () => clearTimeout(timer);
-  }, [want, budget, trip, t, scenario, s.office, s.stop, tick]);
+  }, [want, budget, trip, t, scenario, s.office, s.stop, stepFree, tick]);
 
   const cat = CATS[want];
   const counts = Object.fromEntries(meta.nearby?.map((c) => [c.key, c.count]) ?? []);
@@ -186,21 +191,22 @@ export default function NearbyView({ meta, s, scenario, preset }: { meta: Meta; 
             </button>
           ))}
         </div>
+        <StepFreeSwitch on={stepFree} onChange={onStepFree} dark />
       </section>
 
       {err && <Offline onRetry={() => setTick(tick + 1)} />}
       {!err && !data && <div className="sk sk-card" />}
       {!err && data && (
         <Results data={data} sel={Math.min(sel, Math.max(0, data.results.length - 1))} setSel={setSel} busy={busy} trip={trip}
-          onBudget={setBudget} onTime={setT} onWalk={(place) => setWalk({ data, place, trip })} />
+          onBudget={setBudget} onTime={setT} onWalk={(place) => setWalk({ data, place, trip })} onStepFree={onStepFree} />
       )}
     </div>
   );
 }
 
-function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk }: {
+function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk, onStepFree }: {
   data: NearbyResponse; sel: number; setSel: (i: number) => void; busy: boolean; trip: Trip;
-  onBudget: (b: number) => void; onTime: (t: number) => void; onWalk: (p: NearbyPlace) => void;
+  onBudget: (b: number) => void; onTime: (t: number) => void; onWalk: (p: NearbyPlace) => void; onStepFree: (on: boolean) => void;
 }) {
   const cat = CATS[data.want];
   const c = data.counts;
@@ -212,6 +218,10 @@ function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk }: {
     setPrefState(p);
     savePref(p);
   };
+
+  const sfSkipped = data.step_free && c.not_step_free > 0
+    ? <p className="nb-sf-note">{c.not_step_free} {c.not_step_free === 1 ? data.noun : data.nouns} left out: only reachable past steps or a raised kerb.</p>
+    : null;
 
   if (!place) {
     const allClosed = c.places > 0 && c.closed === c.places;
@@ -236,6 +246,7 @@ function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk }: {
             <p>Places come from OpenStreetMap. Missing one? Add it there and it shows up here.</p>
           </>
         )}
+        {sfSkipped}
       </section>
     );
   }
@@ -292,7 +303,7 @@ function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk }: {
   return (
     <div className={`nb-results ${busy ? "busy" : ""}`}>
       <p className="nb-count">
-        <b>{c.fit}</b> of {c.places} {data.nouns} fit · {data.time}{data.hot ? `, ${Math.round(data.temp_c)}°C` : ""}
+        <b>{c.fit}</b> of {c.places} {data.nouns} fit{data.step_free ? " step-free" : ""} · {data.time}{data.hot ? `, ${Math.round(data.temp_c)}°C` : ""}
       </p>
 
       <section className="m-card nb-best" key={best.id} ref={bestRef}>
@@ -343,10 +354,11 @@ function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk }: {
               : <>Tap a faded line on the map to compare.</>}
         </p>
 
-        <MiniMap lines={lines} pins={pins} height={196} onPick={groups.length > 1 ? (i) => {
+        <MiniMap lines={lines} pins={pins} marks={barrierMarks(best.access?.barriers ?? [])} height={196} onPick={groups.length > 1 ? (i) => {
           const m = lineMode[i];
           if (m && m !== best.mode) setPref(m);
         } : undefined} />
+        {best.access && <AccessNote access={best.access} stepFree={data.step_free} onStepFree={onStepFree} />}
 
         {best.chips.length > 0 && (
           <div className="nb-chips">
@@ -393,6 +405,8 @@ function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk }: {
           ))}
         </section>
       )}
+
+      {sfSkipped}
 
       <p className="m-fine">
         {data.note} Walks use Lumen's shade and crowd models; you're routed the most comfortable way that still fits.
