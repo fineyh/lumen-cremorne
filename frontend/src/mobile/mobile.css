@@ -34,6 +34,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .m-phone { height: 100%; }
 .m-screen { height: 100%; display: flex; flex-direction: column; background: var(--paper); position: relative; overflow: hidden; }
 .m-body { flex: 1; overflow-y: auto; padding: 4px 16px 20px; scrollbar-width: none; }
+.has-nav .m-body { padding-bottom: calc(20px + var(--nav-clear)); }
 .m-body::-webkit-scrollbar { display: none; }
 
 @media (min-width: 720px) {
@@ -61,10 +62,50 @@ button:disabled { opacity: 0.45; cursor: default; }
 .m-scen.live .m-scen-tag { background: var(--good-bg); color: var(--good); }
 .m-scen select { border: none; background: none; font-size: 12.5px; font-weight: 700; color: var(--ink); outline: none; }
 
-.m-nav { display: flex; justify-content: space-around; padding: 8px 18px calc(10px + env(safe-area-inset-bottom)); background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
-.m-nav button { display: grid; justify-items: center; gap: 2px; border: none; background: none; color: var(--ink-3); font-size: 11px; font-weight: 600; padding: 4px 16px; border-radius: 12px; }
-.m-nav button.on { color: var(--ink); }
-.m-nav button.on svg { color: var(--sun-deep); }
+/* tab bar: a floating capsule of liquid glass, content scrolls on underneath it */
+.m-screen { --nav-gap: calc(10px + env(safe-area-inset-bottom)); --nav-clear: calc(78px + env(safe-area-inset-bottom)); }
+.m-screen.has-nav::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--nav-clear); pointer-events: none; z-index: 9; background: linear-gradient(to top, color-mix(in srgb, var(--paper) 85%, transparent) 20%, transparent); }
+.m-nav {
+  --pad: 5px;
+  position: absolute; left: 12px; right: 12px; bottom: var(--nav-gap); z-index: 10;
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: var(--pad);
+  border-radius: 99px; isolation: isolate;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.24));
+  -webkit-backdrop-filter: blur(10px) saturate(190%) brightness(1.04); backdrop-filter: blur(10px) saturate(190%) brightness(1.04);
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+    inset 1px 0 1px rgba(255, 255, 255, 0.45),
+    inset -1px 0 1px rgba(255, 255, 255, 0.45),
+    0 0 0 0.5px rgba(11, 19, 36, 0.1),
+    0 10px 30px -8px rgba(11, 19, 36, 0.28),
+    0 2px 6px -2px rgba(11, 19, 36, 0.12);
+}
+/* specular sheen across the top of the glass */
+.m-nav::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; background: radial-gradient(120% 90% at 50% -30%, rgba(255, 255, 255, 0.7), transparent 55%), linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.18) 45%, transparent 60%); }
+/* the lens: a brighter droplet of glass that slides to the tab that is on */
+.m-nav[data-lens]::after {
+  content: ""; position: absolute; top: var(--pad); bottom: var(--pad); left: var(--pad); z-index: -1;
+  width: calc((100% - 2 * var(--pad)) / var(--n)); border-radius: 99px;
+  transform: translateX(calc(100% * var(--i)));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.55));
+  box-shadow: inset 0 1px 0.5px #fff, inset 0 -1px 1px rgba(11, 19, 36, 0.05), 0 4px 12px -4px rgba(11, 19, 36, 0.22), 0 0 0 0.5px rgba(11, 19, 36, 0.06);
+  transition: transform 0.5s cubic-bezier(0.3, 1.45, 0.5, 1);
+}
+.m-nav button { position: relative; display: grid; justify-items: center; gap: 1px; min-width: 0; border: none; background: none; color: var(--ink-2); font-size: 10.5px; font-weight: 600; letter-spacing: -0.01em; padding: 7px 2px 6px; border-radius: 99px; -webkit-tap-highlight-color: transparent; transition: color 0.25s, transform 0.2s cubic-bezier(0.3, 1.45, 0.5, 1); }
+.m-nav button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-nav button:active { transform: scale(0.9); }
+.m-nav button.on { color: var(--sun-deep); font-weight: 700; }
+.m-nav button:focus-visible { outline: 2px solid var(--sun); outline-offset: -2px; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .m-nav { background: rgba(255, 255, 255, 0.94); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .m-nav { background: rgba(255, 255, 255, 0.96); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m-nav[data-lens]::after, .m-nav button { transition: none; }
+}
 
 .m-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .m-stack > * { animation: rise 0.35s ease-out both; }
@@ -224,6 +265,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 /* ------------------------------------------------------------------ SMS simulator */
 .sms { display: flex; flex-direction: column; min-height: 100%; background: #fff; margin: -4px -16px -20px; }
+.has-nav .sms { margin-bottom: calc(-20px - var(--nav-clear)); padding-bottom: var(--nav-clear); }
 .sms-top { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
 .sms-top b { display: block; font-size: 15px; }
 .sms-top small { color: var(--ink-3); font-size: 12px; }
@@ -420,9 +462,6 @@ button:disabled { opacity: 0.45; cursor: default; }
 .m-offline p { margin: 6px 0 4px; max-width: 260px; }
 .m-offline .m-btn { max-width: 200px; }
 
-/* commuters get five tabs: keep them from crowding each other */
-.m-nav { padding-left: 8px; padding-right: 8px; }
-.m-nav button { padding: 4px 8px; min-width: 0; }
 
 /* ------------------------------------------------------------------ Walk anywhere */
 .go-places { position: relative; display: grid; gap: 6px; margin-top: 12px; }

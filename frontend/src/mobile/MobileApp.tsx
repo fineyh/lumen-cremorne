@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { CalendarDays, Compass, Footprints, MessageSquare, MessagesSquare, Settings2, Sun } from "lucide-react";
 import { get, type AskAnswer, type Meta, type Role } from "../api";
 import Onboarding from "./Onboarding";
@@ -113,7 +113,7 @@ export default function MobileApp() {
         <p className="m-note-small">Open <b>/m</b> on a phone, or scan the QR code in the Console.</p>
       </div>
       <div className="m-phone">
-        <div className="m-screen">
+        <div className={`m-screen${settings ? " has-nav" : ""}`}>
           {settings && view !== "settings" && (
             <header className="m-top">
               <div>
@@ -131,22 +131,31 @@ export default function MobileApp() {
             </header>
           )}
           <div className="m-body">{body()}</div>
-          {settings && (
-            <nav className="m-nav">
-              <button className={view === "home" ? "on" : ""} onClick={() => setView("home")}><CalendarDays size={19} /><span>Today</span></button>
-              {settings.role === "commuter" && (
-                <>
-                  <button className={view === "nearby" ? "on" : ""} onClick={() => setView("nearby")}><Compass size={19} /><span>Nearby</span></button>
-                  <button className={view === "go" ? "on" : ""} onClick={() => setView("go")}><Footprints size={19} /><span>Walk</span></button>
-                  <button className={view === "ask" ? "on" : ""} onClick={() => setView("ask")}><MessagesSquare size={19} /><span>Ask</span></button>
-                </>
-              )}
-              {settings.role === "driver" && (
-                <button className={view === "sms" ? "on" : ""} onClick={() => setView("sms")}><MessageSquare size={19} /><span>Texts</span></button>
-              )}
-              <button className={view === "settings" ? "on" : ""} onClick={() => setView("settings")}><Settings2 size={19} /><span>Settings</span></button>
-            </nav>
-          )}
+          {settings && (() => {
+            const tabs: { v: typeof view; label: string; icon: typeof Sun }[] = [
+              { v: "home", label: "Today", icon: CalendarDays },
+              ...(settings.role === "commuter"
+                ? [
+                    { v: "nearby" as const, label: "Nearby", icon: Compass },
+                    { v: "go" as const, label: "Walk", icon: Footprints },
+                    { v: "ask" as const, label: "Ask", icon: MessagesSquare },
+                  ]
+                : []),
+              ...(settings.role === "driver" ? [{ v: "sms" as const, label: "Texts", icon: MessageSquare }] : []),
+              { v: "settings", label: "Settings", icon: Settings2 },
+            ];
+            const at = tabs.findIndex((t) => t.v === view);
+            // the glass lens slides under whichever tab is on
+            return (
+              <nav className="m-nav" style={{ "--n": tabs.length, "--i": Math.max(at, 0) } as CSSProperties} data-lens={at >= 0 ? "" : undefined}>
+                {tabs.map(({ v, label, icon: Icon }) => (
+                  <button key={v} className={view === v ? "on" : ""} onClick={() => setView(v)} aria-current={view === v ? "page" : undefined}>
+                    <Icon size={20} /><span>{label}</span>
+                  </button>
+                ))}
+              </nav>
+            );
+          })()}
         </div>
       </div>
     </div>
