@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { Download, ExternalLink, Sprout, Sun, Users } from "lucide-react";
 import { get, type CouncilHome as Home } from "../api";
-import { Skeleton } from "./CommuterHome";
+import { Offline, Skeleton } from "./CommuterHome";
 
 export default function CouncilHome({ scenario }: { scenario: string }) {
   const [home, setHome] = useState<Home | null>(null);
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    get<Home>(`/api/me/council?scenario=${scenario}`).then(setHome).catch(() => setHome(null));
-  }, [scenario]);
+    setErr(false);
+    get<Home>(`/api/me/council?scenario=${scenario}`).then(setHome).catch(() => setErr(true));
+  }, [scenario, tick]);
+  if (err) return <Offline onRetry={() => setTick(tick + 1)} />;
   if (!home) return <Skeleton />;
   return (
     <div className="m-stack">

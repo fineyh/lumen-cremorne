@@ -159,10 +159,10 @@ def shadows(scenario: str = "hot", t: int = 525):
 
 @app.get("/api/route")
 def route(src: str = Query(..., alias="from"), dst: str = Query(..., alias="to"),
-          scenario: str = "hot", t: int = 525, temp: float | None = None, plan: str | None = None):
+          scenario: str = "hot", t: int = 525, temp: float | None = None, plan: str | None = None, walk: bool = False):
     pl = _plan(plan)
     try:
-        return fast(lumen.routes(src, dst, scenario, _minutes(t), temp, pl))
+        return fast(lumen.routes(src, dst, scenario, _minutes(t), temp, pl, walk=walk))
     except (ValueError, KeyError) as exc:
         raise HTTPException(400, f"unknown place: {exc}")
 

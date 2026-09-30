@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, Compass, MessageSquare, Settings2, Sun } from "lucide-react";
-import { get, type Meta, type Role } from "../api";
+import { CalendarDays, Compass, Footprints, MessageSquare, MessagesSquare, Settings2, Sun } from "lucide-react";
+import { get, type AskAnswer, type Meta, type Role } from "../api";
 import Onboarding from "./Onboarding";
 import CommuterHome from "./CommuterHome";
 import DriverHome from "./DriverHome";
 import MerchantHome from "./MerchantHome";
 import CouncilHome from "./CouncilHome";
+import { Offline } from "./CommuterHome";
 import SmsSim from "./SmsSim";
 import NearbyView, { type NearbyPreset } from "./NearbyView";
+import GoView, { type GoInit } from "./GoView";
+import AskView, { type AskMsg } from "./AskView";
 import "./mobile.css";
 
 export type Settings = {
@@ -49,20 +52,30 @@ function storeSettings(s: Settings | null) {
 
 export default function MobileApp() {
   const [meta, setMeta] = useState<Meta | null>(null);
+  const [metaErr, setMetaErr] = useState(false);
+  const [metaTry, setMetaTry] = useState(0);
   const [settings, setSettings] = useState<Settings | null>(loadSettings);
-  const [view, setView] = useState<"home" | "nearby" | "sms" | "settings">("home");
+  const [view, setView] = useState<"home" | "nearby" | "go" | "ask" | "sms" | "settings">("home");
   const [preset, setPreset] = useState<NearbyPreset | null>(null);
   const openNearby = (p: NearbyPreset) => {
     setPreset(p);
     setView("nearby");
   };
+  // a Walk opened from an Ask answer; the counter remounts Walk so it takes the new places
+  const [go, setGo] = useState<{ init: GoInit | null; n: number }>({ init: null, n: 0 });
+  const openGo = (a: NonNullable<AskAnswer["action"]>, label: string) => {
+    setGo({ init: { from: a.from, to: a.to, mode: a.mode, minutes: a.minutes, toLabel: label }, n: go.n + 1 });
+    setView("go");
+  };
+  const [askMsgs, setAskMsgs] = useState<AskMsg[]>([]);
   const [scenario, setScenario] = useState("hot");
   const presetRole = new URLSearchParams(window.location.search).get("role") as Role | null;
 
   useEffect(() => {
-    get<Meta>("/api/meta").then(setMeta).catch(() => setMeta(null));
+    setMetaErr(false);
+    get<Meta>("/api/meta").then(setMeta).catch(() => setMetaErr(true));
     document.title = "Lumen · Cremorne";
-  }, []);
+  }, [metaTry]);
 
   const save = (s: Settings | null) => {
     storeSettings(s);
@@ -71,11 +84,16 @@ export default function MobileApp() {
   };
 
   const body = () => {
+    if (!meta && metaErr) return <Offline onRetry={() => setMetaTry(metaTry + 1)} />;
     if (!meta) return <div className="m-loading"><img src="/lumen.svg" alt="" width={44} /><span>Loading Cremorne…</span></div>;
     if (!settings || view === "settings")
       return <Onboarding meta={meta} initial={settings} presetRole={presetRole} onDone={save} onReset={() => save(null)} />;
     if (view === "sms") return <SmsSim />;
-    if (view === "nearby" && settings.role === "commuter") return <NearbyView meta={meta} s={settings} scenario={scenario} preset={preset} />;
+    if (settings.role === "commuter") {
+      if (view === "nearby") return <NearbyView meta={meta} s={settings} scenario={scenario} preset={preset} />;
+      if (view === "go") return <GoView key={go.n} meta={meta} s={settings} scenario={scenario} init={go.init} />;
+      if (view === "ask") return <AskView s={settings} scenario={scenario} msgs={askMsgs} setMsgs={setAskMsgs} onRoute={openGo} />;
+    }
     switch (settings.role) {
       case "commuter": return <CommuterHome meta={meta} s={settings} scenario={scenario} onNearby={openNearby} />;
       case "driver": return <DriverHome s={settings} scenario={scenario} onSms={() => setView("sms")} />;
@@ -100,7 +118,7 @@ export default function MobileApp() {
             <header className="m-top">
               <div>
                 <small>{greet}</small>
-                <h2>{view === "nearby" ? "Pop out nearby" : roleTitle(settings.role)}</h2>
+                <h2>{view === "nearby" ? "Pop out nearby" : view === "go" ? "Walk anywhere" : view === "ask" ? "Ask Lumen" : roleTitle(settings.role)}</h2>
               </div>
               <div className={`m-scen ${scenario === "today" ? "live" : "demo"}`}
                 title={scenario === "today" ? "Today's real forecast" : "Simulated day for the demo, not today's weather"}>
@@ -117,7 +135,11 @@ export default function MobileApp() {
             <nav className="m-nav">
               <button className={view === "home" ? "on" : ""} onClick={() => setView("home")}><CalendarDays size={19} /><span>Today</span></button>
               {settings.role === "commuter" && (
-                <button className={view === "nearby" ? "on" : ""} onClick={() => setView("nearby")}><Compass size={19} /><span>Nearby</span></button>
+                <>
+                  <button className={view === "nearby" ? "on" : ""} onClick={() => setView("nearby")}><Compass size={19} /><span>Nearby</span></button>
+                  <button className={view === "go" ? "on" : ""} onClick={() => setView("go")}><Footprints size={19} /><span>Walk</span></button>
+                  <button className={view === "ask" ? "on" : ""} onClick={() => setView("ask")}><MessagesSquare size={19} /><span>Ask</span></button>
+                </>
               )}
               {settings.role === "driver" && (
                 <button className={view === "sms" ? "on" : ""} onClick={() => setView("sms")}><MessageSquare size={19} /><span>Texts</span></button>

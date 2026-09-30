@@ -218,7 +218,7 @@ class Lumen:
 
     # ------------------------------------------------------------------ routes
     def routes(self, src: str, dst: str, scenario: str, minutes: int, temp: float | None = None,
-               plan: Plan | None = None) -> dict:
+               plan: Plan | None = None, walk: bool = False) -> dict:
         a, a_name = self.resolve(src)
         b, b_name = self.resolve(dst)
         cond = self.conditions(scenario, minutes, temp, plan)
@@ -226,7 +226,7 @@ class Lumen:
             "from": a_name, "to": b_name, "time": fmt_time(minutes), "temp_c": round(cond.temp_c, 1),
             "heat_factor": round(heat_factor(cond.temp_c), 2),
             "plan": plan.key if plan else None,
-            "routes": self.router.routes(a, b, cond),
+            "routes": self.router.routes(a, b, cond, walk),
         }
 
     def street_table(self, scenario: str = "hot") -> list[dict]:

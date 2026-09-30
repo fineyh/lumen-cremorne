@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { MessageSquare, PackageCheck, TrainFront } from "lucide-react";
 import { fmtTime, get, LOS, LOS_COLORS, type DriverHome as Home } from "../api";
-import { Skeleton } from "./CommuterHome";
+import { Offline, Skeleton } from "./CommuterHome";
 import type { Settings } from "./MobileApp";
 
 const START = 360, END = 1200;
 
 export default function DriverHome({ s, scenario, onSms }: { s: Settings; scenario: string; onSms: () => void }) {
   const [home, setHome] = useState<Home | null>(null);
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    get<Home>(`/api/me/driver?streets=${encodeURIComponent(s.streets.join(","))}&scenario=${scenario}`).then(setHome).catch(() => setHome(null));
-  }, [s.streets, scenario]);
+    setErr(false);
+    get<Home>(`/api/me/driver?streets=${encodeURIComponent(s.streets.join(","))}&scenario=${scenario}`).then(setHome).catch(() => setErr(true));
+  }, [s.streets, scenario, tick]);
+  if (err) return <Offline onRetry={() => setTick(tick + 1)} />;
   if (!home) return <Skeleton />;
   const pct = (m: number) => `${((m - START) / (END - START)) * 100}%`;
   const worst = home.streets

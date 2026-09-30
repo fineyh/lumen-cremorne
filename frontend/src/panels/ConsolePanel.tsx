@@ -111,7 +111,7 @@ export default function ConsolePanel({ meta, state, scenario }: Props) {
               <option key={n.id} value={n.id}>{n.id} · {n.street}</option>
             ))}
           </select>
-          <p className="lede">What a café owner on {node?.street} sees on Monday, no IT needed: people passing each hour, for rostering and opening hours.</p>
+          <p className="lede">What a café owner on {node?.street} sees on Monday, no IT needed: people passing each hour, for rostering and opening hours. Shop owners get this, with tips, on their phone.</p>
           <div className="bars">
             {profile.map((p) => (
               <div key={p.hour} className={`b ${p.hour === nowH ? "now" : ""}`} title={`${p.people} people`}>

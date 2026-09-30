@@ -117,13 +117,13 @@ class Router:
         }
 
     # ------------------------------------------------------------------ public
-    def route(self, src: int, dst: int, mode: str, cond: Conditions, with_geometry: bool = True) -> dict:
+    def route(self, src: int, dst: int, mode: str, cond: Conditions, with_geometry: bool = True, walk: bool = False) -> dict:
         w = self.weights(mode, cond)
         nodes = self._path(src, dst, w)
-        return self.describe(nodes, mode, cond, with_geometry)
+        return self.describe(nodes, mode, cond, with_geometry, walk)
 
-    def routes(self, src: int, dst: int, cond: Conditions) -> list[dict]:
-        out = [self.route(src, dst, m, cond) for m in MODES]
+    def routes(self, src: int, dst: int, cond: Conditions, walk: bool = False) -> list[dict]:
+        out = [self.route(src, dst, m, cond, walk=walk) for m in MODES]
         base = out[0]
         for r in out:
             r["vs_shortest"] = {
@@ -135,7 +135,7 @@ class Router:
             r["same_as_shortest"] = r["edges"] == base["edges"]
         return out
 
-    def describe(self, nodes: list[int], mode: str, cond: Conditions, with_geometry: bool = True) -> dict:
+    def describe(self, nodes: list[int], mode: str, cond: Conditions, with_geometry: bool = True, walk: bool = False) -> dict:
         p = self.p
         eids, coords = [], []
         for a, b in zip(nodes[:-1], nodes[1:]):
@@ -166,6 +166,8 @@ class Router:
             for a in nodes:
                 coords.append(p.node_xy[a])
             out["geometry"] = {"type": "LineString", "coordinates": ring_to_lonlat(coords)}
+        if walk:  # for following it step by step on the phone
+            out["walk_steps"] = self.walk_steps(nodes, cond)
         return out
 
     def _steps(self, eids: list[int], cond: Conditions) -> list[dict]:

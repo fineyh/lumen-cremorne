@@ -143,7 +143,7 @@ Onboarding asks only for your role and a few places, and stores them on the phon
 
 | Role | Home screen | Recommendations (rules computed by the backend) |
 | --- | --- | --- |
-| Commuter | **Today card**: when to leave the station and which way to walk ("X min less sun, Y min less crowding, Z min extra walking than the shortest route"), with a mini map and turn-by-turn hints. **Nearby** tab: what fits in the minutes you have (below) | Which nearby street is quiet for lunch and when to avoid the rush; the coolest way to a meeting in another building on a hot day |
+| Commuter | **Today card**: when to leave the station and which way to walk ("X min less sun, Y min less crowding, Z min extra walking than the shortest route"), with a mini map, and you can follow it step by step. **Nearby** tab: what fits in the minutes you have (below). **Walk** tab: any start, destination and time, with the same three ways to walk and step-by-step directions. **Ask** tab: Ask Lumen, where route and place answers open in Walk | Which nearby street is quiet for lunch and when to avoid the rush; the coolest way to a meeting in another building on a hot day |
 | Delivery driver | All-day crowding bands for your usual streets, and busy periods | Unloading windows that avoid train-arrival peaks; the best common window across your whole run; the same content as SMS |
 | Merchant | Hourly foot traffic outside your door, compared with the same day last week | When to add staff, whether to open earlier or close later, and quiet periods |
 | CDH / council | Precinct Comfort Score, the most crowded and most sun-exposed streets | Open the full Console (including what-if) and download the weekly CSV |
@@ -162,7 +162,7 @@ walk out + time there + walk back (or on to work)  <=  your budget
 - **What a normal map can't tell you.** Every leg is routed shortest / coolest / calmest and the most comfortable one that still fits is kept. Rest spots are ranked by how long you can sit and how shady the spot is *while you sit there* (the shadow model is sampled over your stay; parks by shaded area), plus crowding at the door.
 - **Pick the way.** Like the Today card, the best place has Auto / Shortest / Shadiest / Quietest; any way that doesn't fit the budget is greyed out, and the other ways sit faded on the map to tap. The choice is shared with the Today card.
 - **Walk it in the app.** "Start walk" steps through the route Lumen picked (turn onto which street, how far, how shady, which side of the street to keep to), with the map following each step, then the stop and the walk back. It stays on the shady / calm route instead of handing off to a maps app that would re-route the shortest way. There's no GPS: you tap Next as you go.
-- **Also in Ask Lumen.** "Coffee on my way from East Richmond at 8:30am, 15 min?" or "Shady spot to sit for 30 min at 12:30pm?" go through the same engine (`find_nearby` tool, with a rule-based fallback), and "Show on map" draws the walk in the Console.
+- **Also in Ask Lumen.** "Coffee on my way from East Richmond at 8:30am, 15 min?" or "Shady spot to sit for 30 min at 12:30pm?" go through the same engine (`find_nearby` tool, with a rule-based fallback). "Show on map" draws the walk in the Console; on the phone, "Open in Walk" lets you follow it.
 
 ### How the phone app works
 

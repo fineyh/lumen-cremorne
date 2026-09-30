@@ -415,6 +415,51 @@ button:disabled { opacity: 0.45; cursor: default; }
 .pop button small { color: var(--ink-3); font-weight: 600; }
 .rec-ic.pop-ic { background: #ecfeff; color: #0e7490; }
 
+/* ------------------------------------------------------------------ offline: a failed request says so and can be retried */
+.m-offline { display: grid; justify-items: center; gap: 4px; }
+.m-offline p { margin: 6px 0 4px; max-width: 260px; }
+.m-offline .m-btn { max-width: 200px; }
+
+/* commuters get five tabs: keep them from crowding each other */
+.m-nav { padding-left: 8px; padding-right: 8px; }
+.m-nav button { padding: 4px 8px; min-width: 0; }
+
+/* ------------------------------------------------------------------ Walk anywhere */
+.go-places { position: relative; display: grid; gap: 6px; margin-top: 12px; }
+.go-pl { display: flex; align-items: center; gap: 10px; min-width: 0; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 14px; padding: 2px 48px 2px 10px; }
+.go-pl select { flex: 1; min-width: 0; border: none; background: none; color: #fff; font-weight: 700; padding: 9px 0; outline: none; text-overflow: ellipsis; }
+.go-pl select option, .go-pl select optgroup { color: var(--ink); background: #fff; }
+.go-pin { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; background: #fff; color: var(--ink); }
+.go-pin.b { background: #94a3b8; color: #fff; }
+.go-swap { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); background: #1e293b; color: #fff; display: grid; place-items: center; }
+.go-swap:active { transform: translateY(-50%) scale(0.92); }
+.go-start { margin-top: 12px; }
+.go .route-sum { margin-top: 10px; }
+
+/* ------------------------------------------------------------------ Ask Lumen */
+.ask { display: flex; flex-direction: column; min-height: 100%; }
+.ask-thread { flex: 1; }
+.ask-intro b { display: block; font-size: 15px; letter-spacing: -0.01em; }
+.ask-intro p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink-2); }
+.ask-thread { display: flex; flex-direction: column; gap: 8px; justify-content: flex-end; }
+.ask-b { max-width: 86%; padding: 9px 13px; font-size: 14px; line-height: 1.45; border-radius: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ask-b.me { align-self: flex-end; background: var(--ink); color: #fff; border-bottom-right-radius: 5px; }
+.ask-b.lumen { align-self: flex-start; background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+.ask-b .nb-chips { margin-top: 8px; }
+.ask-go { display: flex; width: fit-content; align-items: center; gap: 5px; margin-top: 8px; border: none; background: color-mix(in srgb, var(--cool) 12%, transparent); color: var(--cool); font-weight: 700; font-size: 12.5px; padding: 6px 11px; border-radius: 99px; }
+.ask-b.typing { display: flex; gap: 4px; padding: 13px 14px; }
+.ask-b.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); animation: ask-dot 1s infinite ease-in-out; }
+.ask-b.typing i:nth-child(2) { animation-delay: 0.15s; }
+.ask-b.typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes ask-dot { 0%, 80%, 100% { opacity: 0.3; transform: none; } 40% { opacity: 1; transform: translateY(-3px); } }
+.ask-sug { display: flex; align-items: flex-start; flex: none; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+.ask-sug::-webkit-scrollbar { display: none; }
+.ask-sug button { flex: none; border: 1px solid var(--line-2); background: #fff; border-radius: 99px; padding: 7px 12px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+.ask-form { position: sticky; bottom: 0; display: flex; gap: 8px; padding: 6px 0 2px; background: var(--paper); }
+.ask-form input { flex: 1; min-width: 0; border: 1px solid var(--line-2); background: #fff; border-radius: 99px; padding: 11px 16px; font-size: 16px; outline: none; }
+.ask-form input:focus { border-color: var(--ink-3); }
+.ask-form button { flex: none; width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--ink); color: #fff; display: grid; place-items: center; }
+
 @media (prefers-reduced-motion: reduce) {
-  .nb-bar i, .nb-minibar i, .mm-pin.place, .nb-budget b, .wk-cur { animation: none; }
+  .nb-bar i, .nb-minibar i, .mm-pin.place, .nb-budget b, .wk-cur, .ask-b.typing i { animation: none; }
 }
