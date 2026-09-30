@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from lumen import brief as brief_mod
-from lumen import evaluate, personal, sms
+from lumen import evaluate, nearby as nearby_mod, personal, sms
 from lumen import whatif as whatif_mod
 from lumen.engine import SCENARIOS, Lumen
 from lumen.live import LiveHub, Reading
@@ -132,6 +132,7 @@ def meta():
         },
         "llm": brief_mod.ollama_available(),
         "streets": personal.street_list(lumen),
+        "nearby": nearby_mod.categories(lumen),
         "lan_url": _lan_url(),
         "whatif": {"tree_sizes": whatif_mod.TREE_SIZES, "canopies": whatif_mod.CANOPIES,
                    "mature_years": whatif_mod.MATURE_YEARS, "costs": whatif_mod.COSTS,
@@ -358,6 +359,16 @@ def me_commuter(stop: str = "train-richmond", office: str | None = None, arrive:
         return fast(personal.commuter(lumen, stop, office or _default_office(), _hhmm(arrive, 540), scenario, meeting, llm))
     except (ValueError, KeyError) as exc:
         raise HTTPException(400, f"unknown place: {exc}")
+
+
+@app.get("/api/nearby")
+def nearby(want: str = "coffee", src: str | None = Query(None, alias="from"), to: str | None = None,
+           shape: str = "return", budget: float = 10, t: int = 750, scenario: str = "hot", prefer: str = "auto"):
+    """Places you can get to, use and get back from inside `budget` minutes (see lumen/nearby.py)."""
+    try:
+        return fast(nearby_mod.nearby(lumen, want, src or _default_office(), to, shape, budget, _minutes(t), scenario, prefer))
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(400, f"bad request: {exc}")
 
 
 @app.get("/api/me/driver")

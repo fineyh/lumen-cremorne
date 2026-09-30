@@ -2,10 +2,12 @@
 
 Run once before the hackathon demo; the output is cached in data/raw/ so the demo runs offline.
 
-    python data/fetch_osm.py
+    python data/fetch_osm.py            # everything
+    python data/fetch_osm.py pois       # just one layer
 """
 import json
 import pathlib
+import sys
 import time
 
 import requests
@@ -51,6 +53,15 @@ QUERIES = {
         [out:json][timeout:60];
         (way["waterway"="river"]({bb}); way["natural"="water"]({bb}); relation["natural"="water"]({bb}););
         out body geom;""",
+    # Places people pop out to between meetings: shops, food, seats, parks, toilets, water.
+    "pois": f"""
+        [out:json][timeout:90];
+        (
+          nwr["amenity"~"^(cafe|fast_food|restaurant|pub|ice_cream|pharmacy|atm|bank|toilets|drinking_water|bench|shelter)$"]({bb});
+          nwr["shop"~"^(coffee|bakery|deli|convenience|supermarket|chemist)$"]({bb});
+          nwr["leisure"~"^(park|garden|picnic_table)$"]({bb});
+        );
+        out tags geom;""",
 }
 
 
@@ -73,4 +84,5 @@ def run(name: str, query: str) -> None:
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     for name, q in QUERIES.items():
-        run(name, q)
+        if len(sys.argv) < 2 or name in sys.argv[1:]:
+            run(name, q)

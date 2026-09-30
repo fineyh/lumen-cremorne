@@ -13,6 +13,7 @@ so a fully sunlit segment at 34 C+ loses 60 points and a LOS E+ footpath loses 4
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 import networkx as nx
@@ -93,8 +94,11 @@ class Router:
 
     def paths_from(self, src: int, w: np.ndarray) -> dict[int, list[int]]:
         """Best path from src to every reachable node (one Dijkstra run)."""
-        _, paths = nx.single_source_dijkstra(self.p.graph, src, weight=self._weight_fn(w))
-        return paths
+        return self.tree_from(src, w)[1]
+
+    def tree_from(self, src: int, w: np.ndarray) -> tuple[dict[int, float], dict[int, list[int]]]:
+        """Cost and best path from src to every reachable node (one Dijkstra run)."""
+        return nx.single_source_dijkstra(self.p.graph, src, weight=self._weight_fn(w))
 
     def path_stats(self, nodes: list[int], cond: Conditions, comfort_e: np.ndarray | None = None) -> dict:
         """Minutes / sun minutes / crowded minutes of a node path, without steps or geometry."""
@@ -200,3 +204,100 @@ class Router:
                 "los": LOS_LETTERS[s["worst_los"]],
             })
         return out
+
+    def walk_steps(self, nodes: list[int], cond: Conditions) -> list[dict]:
+        """Steps for following a route on the phone: like `_steps`, plus which way to turn onto each
+        street, how long it takes and the stretch of map it covers. Short jogs fold into the step
+        before so the steps join up end to end."""
+        p = self.p
+        if len(nodes) < 2:
+            return []
+        groups: list[dict] = []
+        for i, (a, b) in enumerate(zip(nodes[:-1], nodes[1:])):
+            e = p.edge_between(a, b)
+            name = self.labels[e]
+            if name in ("crossing", "laneway") and groups:
+                name = groups[-1]["street"]
+            side = None
+            if p.e_is_road[e] and cond.shade.sun_up and cond.shade.edge_side_gain[e] > 0.25:
+                left = p.e_left_compass[e]
+                side = left if cond.shade.edge_best_side[e] == 0 else OPPOSITE[left]
+            if not groups or groups[-1]["street"] != name:
+                groups.append({"street": name, "length_m": 0.0, "sun_m": 0.0, "sides": {}, "los": 0, "i0": i})
+            g = groups[-1]
+            g["i1"] = i + 1
+            g["length_m"] += p.e_len[e]
+            g["sun_m"] += p.e_len[e] * cond.sun[e]
+            g["los"] = max(g["los"], int(cond.crowd.los[e]))
+            if side:
+                g["sides"][side] = g["sides"].get(side, 0) + p.e_len[e]
+        kept: list[dict] = []
+        for g in groups:
+            prev = kept[-1] if kept else None
+            if prev and (g["length_m"] < 15 or g["street"] == prev["street"]):
+                prev["i1"] = g["i1"]
+                prev["length_m"] += g["length_m"]
+                prev["sun_m"] += g["sun_m"]
+                prev["los"] = max(prev["los"], g["los"])
+                for k, v in g["sides"].items():
+                    prev["sides"][k] = prev["sides"].get(k, 0) + v
+            else:
+                kept.append(g)
+        if len(kept) > 1 and kept[0]["length_m"] < 15:  # a few metres to reach the first street
+            first, nxt = kept.pop(0), kept[0]
+            nxt["i0"] = first["i0"]
+            nxt["length_m"] += first["length_m"]
+            nxt["sun_m"] += first["sun_m"]
+            nxt["los"] = max(nxt["los"], first["los"])
+        xy = [p.node_xy[n] for n in nodes]
+        out = []
+        for k, g in enumerate(kept):
+            side = max(g["sides"], key=g["sides"].get) if g["sides"] else None
+            heading = _bearing(xy, g["i0"], g["i1"])
+            if k == 0:
+                turn = "start"
+            else:
+                turn = _turn(heading - _bearing(xy, kept[k - 1]["i1"], kept[k - 1]["i0"], back=True))
+            out.append({
+                "street": g["street"],
+                "turn": turn,
+                "heading": _compass(heading),
+                "length_m": round(g["length_m"]),
+                "minutes": round(g["length_m"] / WALK_SPEED / 60, 1),
+                "shaded_pct": round(100 * (1 - g["sun_m"] / g["length_m"])) if g["length_m"] else 100,
+                "shady_side": side if side and g["sides"][side] > 0.4 * g["length_m"] else None,
+                "los": LOS_LETTERS[g["los"]],
+                "path": ring_to_lonlat(xy[g["i0"]:g["i1"] + 1]),
+            })
+        return out
+
+
+TURN_LOOK = 20.0  # m either side of a corner used to read the turn, so a kerb ramp doesn't count as one
+
+
+def _bearing(xy: list, i: int, j: int, back: bool = False) -> float:
+    """Compass bearing (0 = north, clockwise) leaving node i towards node j, measured over the first
+    TURN_LOOK metres. With back=True, the bearing arriving at node i from the j side."""
+    x0, y0 = xy[i]
+    step = 1 if j > i else -1
+    x1, y1 = x0, y0
+    for n in range(i + step, j + step, step):
+        x1, y1 = xy[n]
+        if math.hypot(x1 - x0, y1 - y0) >= TURN_LOOK:
+            break
+    dx, dy = (x0 - x1, y0 - y1) if back else (x1 - x0, y1 - y0)
+    return math.degrees(math.atan2(dx, dy)) % 360
+
+
+def _turn(delta: float) -> str:
+    d = (delta + 180) % 360 - 180  # -180..180, positive = right
+    a = abs(d)
+    if a < 25:
+        return "straight"
+    if a > 150:
+        return "uturn"
+    return ("slight-" if a < 60 else "") + ("right" if d > 0 else "left")
+
+
+def _compass(b: float) -> str:
+    return ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"][round(b / 45) % 8]

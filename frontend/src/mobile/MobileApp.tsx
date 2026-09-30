@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, MessageSquare, Settings2, Sun } from "lucide-react";
+import { CalendarDays, Compass, MessageSquare, Settings2, Sun } from "lucide-react";
 import { get, type Meta, type Role } from "../api";
 import Onboarding from "./Onboarding";
 import CommuterHome from "./CommuterHome";
@@ -7,6 +7,7 @@ import DriverHome from "./DriverHome";
 import MerchantHome from "./MerchantHome";
 import CouncilHome from "./CouncilHome";
 import SmsSim from "./SmsSim";
+import NearbyView, { type NearbyPreset } from "./NearbyView";
 import "./mobile.css";
 
 export type Settings = {
@@ -49,7 +50,12 @@ function storeSettings(s: Settings | null) {
 export default function MobileApp() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [settings, setSettings] = useState<Settings | null>(loadSettings);
-  const [view, setView] = useState<"home" | "sms" | "settings">("home");
+  const [view, setView] = useState<"home" | "nearby" | "sms" | "settings">("home");
+  const [preset, setPreset] = useState<NearbyPreset | null>(null);
+  const openNearby = (p: NearbyPreset) => {
+    setPreset(p);
+    setView("nearby");
+  };
   const [scenario, setScenario] = useState("hot");
   const presetRole = new URLSearchParams(window.location.search).get("role") as Role | null;
 
@@ -69,8 +75,9 @@ export default function MobileApp() {
     if (!settings || view === "settings")
       return <Onboarding meta={meta} initial={settings} presetRole={presetRole} onDone={save} onReset={() => save(null)} />;
     if (view === "sms") return <SmsSim />;
+    if (view === "nearby" && settings.role === "commuter") return <NearbyView meta={meta} s={settings} scenario={scenario} preset={preset} />;
     switch (settings.role) {
-      case "commuter": return <CommuterHome meta={meta} s={settings} scenario={scenario} />;
+      case "commuter": return <CommuterHome meta={meta} s={settings} scenario={scenario} onNearby={openNearby} />;
       case "driver": return <DriverHome s={settings} scenario={scenario} onSms={() => setView("sms")} />;
       case "merchant": return <MerchantHome meta={meta} s={settings} scenario={scenario} />;
       default: return <CouncilHome scenario={scenario} />;
@@ -93,7 +100,7 @@ export default function MobileApp() {
             <header className="m-top">
               <div>
                 <small>{greet}</small>
-                <h2>{roleTitle(settings.role)}</h2>
+                <h2>{view === "nearby" ? "Pop out nearby" : roleTitle(settings.role)}</h2>
               </div>
               <div className={`m-scen ${scenario === "today" ? "live" : "demo"}`}
                 title={scenario === "today" ? "Today's real forecast" : "Simulated day for the demo, not today's weather"}>
@@ -109,6 +116,9 @@ export default function MobileApp() {
           {settings && (
             <nav className="m-nav">
               <button className={view === "home" ? "on" : ""} onClick={() => setView("home")}><CalendarDays size={19} /><span>Today</span></button>
+              {settings.role === "commuter" && (
+                <button className={view === "nearby" ? "on" : ""} onClick={() => setView("nearby")}><Compass size={19} /><span>Nearby</span></button>
+              )}
               {settings.role === "driver" && (
                 <button className={view === "sms" ? "on" : ""} onClick={() => setView("sms")}><MessageSquare size={19} /><span>Texts</span></button>
               )}

@@ -12,6 +12,7 @@ import re
 
 import requests
 
+from . import nearby as nearby_mod
 from .crowd import LOS_LETTERS
 from .engine import Lumen, fmt_time
 
@@ -175,7 +176,30 @@ TOOLS = [
     {"type": "function", "function": {
         "name": "get_hotspots", "description": "Most sun-exposed and most crowded streets at a time",
         "parameters": {"type": "object", "properties": {"time": {"type": "string"}}}}},
+    {"type": "function", "function": {
+        "name": "find_nearby",
+        "description": "Places to pop out to within a time limit: coffee, food, a shady spot to rest, toilets, cash...",
+        "parameters": {"type": "object", "properties": {
+            "want": {"type": "string", "enum": list(nearby_mod.CATEGORIES)},
+            "budget": {"type": "number", "description": "minutes available for the whole trip"},
+            "trip": {"type": "string", "enum": ["return", "via"],
+                     "description": "return = back to where you started; via = on the way to work"},
+            "time": {"type": "string", "description": "e.g. 12:30pm"}}, "required": ["want"]}}},
 ]
+# question words -> nearby category (first match wins; bare "lunch" stays a crowd question)
+NEARBY_WORDS = [
+    ("coffee", r"coffee|latte|flat white|espresso|cappuccino|\bcaf[eé]"),
+    ("lunch", r"sit[- ]down|restaurant|\bpub\b|lunch spot|place for lunch|somewhere to eat"),
+    ("bite", r"snack|\bbite\b|sandwich|take-?away|bakery|pastry|ice cream|grab (?:some )?(?:food|lunch)|quick lunch"),
+    ("rest", r"\brest\b|\bsit\b|shady spot|somewhere to sit|\bseat\b|bench|\bpark\b|\bbreak\b|relax|breather"),
+    ("groceries", r"grocer|supermarket|convenience|corner store|\bmilk\b"),
+    ("pharmacy", r"pharmac|chemist|panadol|medicine"),
+    ("cash", r"\batm\b|\bcash\b|\bbank\b"),
+    ("toilets", r"toilet|bathroom|restroom|\bloo\b"),
+    ("water", r"drinking water|water (?:refill|fountain|bottle)|refill"),
+]
+NEARBY_BUDGET = {"coffee": 10, "bite": 15, "lunch": 45, "rest": 20, "groceries": 15, "pharmacy": 15,
+                 "cash": 10, "toilets": 10, "water": 10}
 
 
 def parse_time(text: str, default: int) -> int:
@@ -245,6 +269,72 @@ def tool_get_route(lumen, scenario, minutes, office_id, origin=None, destination
     return answer, {"type": "route", "from": o, "to": d, "mode": mode, "minutes": t}
 
 
+def nearby_want(text: str) -> str | None:
+    low = text.lower()
+    return next((k for k, pat in NEARBY_WORDS if re.search(pat, low)), None)
+
+
+def parse_budget(text: str) -> float | None:
+    low = text.lower()
+    m = re.search(r"(\d+(?:\.\d+)?)\s*-?\s*(?:min|mins|minutes)\b", low)
+    if m:
+        return float(m.group(1))
+    for pat, v in ((r"half an? hour|half-hour", 30), (r"quarter of an hour", 15), (r"\ban hour\b|one hour", 60),
+                   (r"\bten minutes\b", 10), (r"\bfive minutes\b", 5)):
+        if re.search(pat, low):
+            return float(v)
+    return None
+
+
+def tool_find_nearby(lumen, scenario, minutes, office_id, want=None, budget=None, trip=None, time=None, question=""):
+    want = want if want in nearby_mod.CATEGORIES else (nearby_want(question) or "coffee")
+    try:
+        budget = float(budget) if budget else None
+    except (TypeError, ValueError):
+        budget = None
+    budget = budget or parse_budget(question) or NEARBY_BUDGET[want]
+    t = parse_time(time or question, minutes)
+    places = _find_place(lumen, question)
+    via = trip == "via" or bool(re.search(r"on (?:my|the) way|en route|before work|way (?:in|to work)", question.lower()))
+    if via:
+        stops = [ref for _, ref in places if ref.startswith(("train-", "tram-"))]
+        offices = [ref for _, ref in places if not ref.startswith(("train-", "tram-"))]
+        origin, dest = (stops[0] if stops else DEFAULT_ORIGIN), (offices[-1] if offices else office_id)
+    else:
+        origin, dest = (places[0][1] if places else office_id), None
+    res = nearby_mod.nearby(lumen, want, origin, dest, "via" if via else "return", budget, t, scenario)
+    if not res["results"]:
+        c = res["counts"]
+        if c["places"] and c["closed"] == c["places"]:
+            return f"All {c['places']} {res['nouns']} Lumen knows are closed at {res['time']}.", None
+        if res["need_min"]:
+            return (f"Nothing fits in {budget:g} min from {res['from']} at {res['time']}: the closest {res['noun']} "
+                    f"needs about {res['need_min']} min all up."), None
+        return f"I couldn't find a {res['noun']} near {res['from']}.", None
+    b = res["results"][0]
+    if res["kind"] == "stay":
+        sp = b["spot"]
+        extra = "" if not res["hot"] else ", under cover" if sp["covered"] else \
+            f", with ~{sp['shade_m2']:,} m² of shade" if sp["park"] else f", {sp['shade_pct']}% shaded while you sit"
+        answer = (f"{b['name']}: {b['walk_out']:g} min from {res['from']}, so you can sit for {b['dwell']:.0f} min"
+                  f"{extra} and be back by {b['back_at']}.")
+    else:
+        there = f"~{b['dwell']:g} min {res['verb']}".rstrip()
+        if via:
+            answer = (f"{b['name']} ({b['address']}): {b['walk_out']:g} min from {res['from']}, {there}, then "
+                      f"{b['walk_back']:g} min on to {res['to']}. That's {max(0, b['detour']):g} min more walking "
+                      f"than going straight; you arrive at {b['back_at']}.")
+        else:
+            answer = (f"{b['name']} ({b['address']}): {b['walk_out']:g} min there, {there}, {b['walk_back']:g} min back. "
+                      f"Back by {b['back_at']} with {b['spare']:g} min to spare.")
+        if b["hours"].get("assumed"):
+            answer += " Its hours aren't listed, so check before you go."
+    others = [f"{r['name']} ({r['spare']:g} min spare)" if res["kind"] != "stay" else r["name"] for r in res["results"][1:3]]
+    if others:
+        answer += " Also fits: " + ", ".join(others) + "."
+    return answer, {"type": "route", "from": origin, "to": f"{b['lon']},{b['lat']}", "mode": b["mode"], "minutes": t}
+
+
 def tool_get_crowd(lumen, scenario, minutes, time=None, question="", **_):
     t = parse_time(time, minutes) if time else parse_time(question, minutes)
     cond = lumen.conditions(scenario, t)
@@ -282,7 +372,8 @@ def tool_get_hotspots(lumen, scenario, minutes, time=None, question="", **_):
 
 def ask(lumen: Lumen, question: str, scenario: str, minutes: int, office_id: str) -> dict:
     ctx = dict(scenario=scenario, minutes=minutes)
-    fns = {"get_route": tool_get_route, "get_crowd": tool_get_crowd, "get_hotspots": tool_get_hotspots}
+    fns = {"get_route": tool_get_route, "get_crowd": tool_get_crowd, "get_hotspots": tool_get_hotspots,
+           "find_nearby": tool_find_nearby}
     model = ollama_available()
     if model:
         try:
@@ -299,18 +390,22 @@ def ask(lumen: Lumen, question: str, scenario: str, minutes: int, office_id: str
                 args = c.get("arguments") or {}
                 if isinstance(args, str):
                     args = json.loads(args)
-                args = {k: v for k, v in args.items() if k in ("origin", "destination", "mode", "time") and v}
+                args = {k: v for k, v in args.items()
+                        if k in ("origin", "destination", "mode", "time", "want", "budget", "trip") and v}
                 # model-proposed place names are resolved by our own matcher, never trusted as ids
                 args.pop("origin", None); args.pop("destination", None)
                 fn = fns.get(c["name"])
                 if fn:
-                    extra = {"office_id": office_id} if fn is tool_get_route else {}
+                    extra = {"office_id": office_id} if fn in (tool_get_route, tool_find_nearby) else {}
                     answer, action = fn(lumen, **ctx, **extra, **args, question=question)
                     return {"answer": answer, "action": action, "tool": c["name"], "engine": f"ollama:{model}"}
         except Exception:
             pass
     q = question.lower()
-    if re.search(r"route|walk|get to|how do i|\bway\b|go to|head to|meeting", q):
+    if nearby_want(q):
+        answer, action = tool_find_nearby(lumen, **ctx, office_id=office_id, question=question)
+        tool = "find_nearby"
+    elif re.search(r"route|walk|get to|how do i|\bway\b|go to|head to|meeting", q):
         answer, action = tool_get_route(lumen, **ctx, office_id=office_id, question=question)
         tool = "get_route"
     elif re.search(r"lunch|busy|crowd|quiet|people|packed", q):
@@ -321,6 +416,7 @@ def ask(lumen: Lumen, question: str, scenario: str, minutes: int, office_id: str
         tool = "get_hotspots"
     else:
         return {"answer": "I can help with routes (\"coolest way to Dover House at 3:30pm?\"), crowds "
-                          "(\"where's quiet for lunch?\") and heat (\"which streets are hottest now?\").",
+                          "(\"where's quiet for lunch?\"), heat (\"which streets are hottest now?\") "
+                          "and quick trips (\"coffee in 10 min?\").",
                 "action": None, "tool": None, "engine": "rules"}
     return {"answer": answer, "action": action, "tool": tool, "engine": "rules"}

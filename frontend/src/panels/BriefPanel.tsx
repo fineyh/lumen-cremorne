@@ -14,6 +14,8 @@ type Msg = { who: "me" | "lumen"; text: string; action?: AskAnswer["action"]; en
 
 const SUGGEST = [
   "Where's quiet for lunch?",
+  "Coffee on my way from East Richmond at 8:30am, 15 min?",
+  "Shady spot to sit for 30 min at 12:30pm?",
   "Coolest way from East Richmond to Era Building at 3:30pm?",
   "Which streets are hottest this afternoon?",
   "Least crowded walk to Sussan Group at 8:45am",

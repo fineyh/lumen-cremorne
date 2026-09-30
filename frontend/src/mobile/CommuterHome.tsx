@@ -1,29 +1,21 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Clock, Footprints, MapPin, Sparkles, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock, type LucideIcon } from "lucide-react";
+import { ChevronDown, Clock, Compass, Footprints, MapPin, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock } from "lucide-react";
 import { get, LOS, LOS_COLORS, MODE_COLORS, type CommuterHome as Home, type Meta, type Route } from "../api";
 import MiniMap from "./MiniMap";
 import type { Settings } from "./MobileApp";
+import { CATS, type NearbyPreset } from "./NearbyView";
+import { loadPref, PREFS, savePref, type Pref } from "./routePref";
 
-type Pref = "auto" | Route["mode"];
-const PREFS: { key: Pref; label: string; icon: LucideIcon }[] = [
-  { key: "auto", label: "Auto", icon: Sparkles },
-  { key: "shortest", label: "Shortest", icon: Footprints },
-  { key: "coolest", label: "Shadiest", icon: TreeDeciduous },
-  { key: "calmest", label: "Quietest", icon: Users },
+// shortcuts into Nearby: a coffee on the way in, then the classic between-meetings trips
+const POP: (NearbyPreset & { label: string })[] = [
+  { want: "coffee", budget: 20, trip: "in", label: "Coffee on the way" },
+  { want: "bite", budget: 15, trip: "back", t: 750, label: "Quick bite" },
+  { want: "rest", budget: 20, trip: "back", t: 750, label: "Shady break" },
 ];
-const PREF_KEY = "lumen.phone.routePref";
-function loadPref(): Pref {
-  try {
-    const v = localStorage.getItem(PREF_KEY);
-    return PREFS.some((p) => p.key === v) ? (v as Pref) : "auto";
-  } catch {
-    return "auto";
-  }
-}
 
 type MeetingData = { to: string; to_id: string; time: string; temp_c: number; heat_matters: boolean; route: Route; shortest: Route };
 
-export default function CommuterHome({ meta, s, scenario }: { meta: Meta; s: Settings; scenario: string }) {
+export default function CommuterHome({ meta, s, scenario, onNearby }: { meta: Meta; s: Settings; scenario: string; onNearby: (p: NearbyPreset) => void }) {
   const [home, setHome] = useState<Home | null>(null);
   const [meeting, setMeeting] = useState<string>("");
   const [open, setOpen] = useState(false);
@@ -31,11 +23,7 @@ export default function CommuterHome({ meta, s, scenario }: { meta: Meta; s: Set
   const [pref, setPrefState] = useState<Pref>(loadPref);
   const setPref = (p: Pref) => {
     setPrefState(p);
-    try {
-      localStorage.setItem(PREF_KEY, p);
-    } catch {
-      /* private mode: remembered for this visit only */
-    }
+    savePref(p);
   };
 
   useEffect(() => {
@@ -140,6 +128,22 @@ export default function CommuterHome({ meta, s, scenario }: { meta: Meta; s: Set
             ))}
           </ol>
         )}
+      </section>
+
+      <section className="m-card rec">
+        <div className="rec-h"><span className="rec-ic pop-ic"><Compass size={16} /></span><b>Got a few minutes?</b></div>
+        <p>See what you can get to and back from in the time you have, taking the shady way.</p>
+        <div className="pop">
+          {POP.map((p) => {
+            const c = CATS[p.want];
+            const Icon = c.icon;
+            return (
+              <button key={p.label} style={{ ["--cc" as string]: c.color }} onClick={() => onNearby(p)}>
+                <span><Icon size={13} /></span>{p.label} <small>{p.budget} min</small>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       {lunch && (

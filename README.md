@@ -16,6 +16,7 @@ Built at **FEIT Hackathon 2026** for the Cremorne Digital Hub challenge. The who
 - **Shade that follows the sun.** NOAA solar position plus building and tree-canopy shadow sweeps across 2,835 buildings, 2,180 trees and 153 km of footpaths.
 - **Crowding you can plan around.** Train-arrival pulses feed a Fruin level-of-service model for every street segment.
 - **Three routes, one score.** Shortest, coolest and least crowded routes, each with a 0–100 Comfort Score.
+- **"I've got 10 minutes."** Pick coffee, a quick bite, a shady spot to sit, toilets or cash and a time budget; Lumen lists only the places you can reach, use and get back from in time, routed the comfortable way.
 - **Evidence for council.** Plant trees, add shade sails or close a footpath on the map, then see the before/after for all 304 station-to-office walks, with a cost estimate, in under half a second.
 - **One precinct, many users.** A Console for the precinct hub and council, and a phone PWA for commuters, delivery drivers, café owners and the hub, with an SMS channel for drivers who won't install an app.
 - **Offline, local LLM.** An optional Ollama model rewords the Morning Brief and powers Ask Lumen. If the model changes any number, Lumen falls back to a deterministic template.
@@ -142,10 +143,28 @@ Onboarding asks only for your role and a few places, and stores them on the phon
 
 | Role | Home screen | Recommendations (rules computed by the backend) |
 | --- | --- | --- |
-| Commuter | **Today card**: when to leave the station and which way to walk ("X min less sun, Y min less crowding, Z min extra walking than the shortest route"), with a mini map and turn-by-turn hints | Which nearby street is quiet for lunch and when to avoid the rush; the coolest way to a meeting in another building on a hot day |
+| Commuter | **Today card**: when to leave the station and which way to walk ("X min less sun, Y min less crowding, Z min extra walking than the shortest route"), with a mini map and turn-by-turn hints. **Nearby** tab: what fits in the minutes you have (below) | Which nearby street is quiet for lunch and when to avoid the rush; the coolest way to a meeting in another building on a hot day |
 | Delivery driver | All-day crowding bands for your usual streets, and busy periods | Unloading windows that avoid train-arrival peaks; the best common window across your whole run; the same content as SMS |
 | Merchant | Hourly foot traffic outside your door, compared with the same day last week | When to add staff, whether to open earlier or close later, and quiet periods |
 | CDH / council | Precinct Comfort Score, the most crowded and most sun-exposed streets | Open the full Console (including what-if) and download the weekly CSV |
+
+### Pop out nearby (commuter → Nearby)
+
+"I've got **15 min** for **coffee**." Pick what you need, how long you have and the trip (back to your desk, on your way in from the station, or heading home). Lumen shows only the places that fit, the best one first, with a time bar (walk · order · back · spare), a mini map and the time you'll be back.
+
+```
+walk out + time there + walk back (or on to work)  <=  your budget
+```
+
+- **Places.** 9 categories from OpenStreetMap POIs (`data/raw/pois.json`): coffee, quick bite, sit-down lunch, shady rest (parks, benches, picnic tables, shelters), groceries, pharmacy, cash, toilets, water.
+- **Time there.** Errands use an estimate that grows in the morning and lunch rush (a coffee is ~3 min, ~4.5 min at 8:45). A rest stop gets whatever the budget leaves, rounded down to whole minutes.
+- **Opening hours.** Read from OSM `opening_hours` where mapped (a small parser covers the forms used in Cremorne). Where they aren't, a typical window for that kind of place is assumed and the result says "Hours not listed". Closed places are dropped, and if everything is closed or nothing fits, the screen says so and offers a fix ("Make it 11 min", "Try 10am").
+- **What a normal map can't tell you.** Every leg is routed shortest / coolest / calmest and the most comfortable one that still fits is kept. Rest spots are ranked by how long you can sit and how shady the spot is *while you sit there* (the shadow model is sampled over your stay; parks by shaded area), plus crowding at the door.
+- **Pick the way.** Like the Today card, the best place has Auto / Shortest / Shadiest / Quietest; any way that doesn't fit the budget is greyed out, and the other ways sit faded on the map to tap. The choice is shared with the Today card.
+- **Walk it in the app.** "Start walk" steps through the route Lumen picked (turn onto which street, how far, how shady, which side of the street to keep to), with the map following each step, then the stop and the walk back. It stays on the shady / calm route instead of handing off to a maps app that would re-route the shortest way. There's no GPS: you tap Next as you go.
+- **Also in Ask Lumen.** "Coffee on my way from East Richmond at 8:30am, 15 min?" or "Shady spot to sit for 30 min at 12:30pm?" go through the same engine (`find_nearby` tool, with a rule-based fallback), and "Show on map" draws the walk in the Console.
+
+### How the phone app works
 
 - **Recommendation logic.** Your settings, today's temperature and the crowd model go in; backend rules compute every recommendation and number. A local LLM, if present, only polishes the wording, with the same number check as the Brief.
 - **SMS for drivers only.** The phone simulates the full conversation: JOIN, pick streets, then one message a day at 6:30, with TODAY / CHANGE / STOP / HELP. Free-text questions such as "busy on Church St at 5pm?" get a rule-based answer from the same street windows (no LLM, so the numbers match TODAY). You only get messages after sending JOIN. Lumen stores only the chosen streets, never the phone number or location, and STOP deletes them. Messages use only GSM-7 characters (up to 160 per message).
@@ -168,6 +187,7 @@ Mia is a fictional commuter.
 | Council | **What-if**: at 3:30 heat, plant 5 large trees along Cremorne St and drag maturity to year 15 → back to year 1 → swap for shade sails | "Asking council for shade" becomes quantified evidence: sun-exposed minutes before and after, routes that benefit, cost. Year 1 does almost nothing, which is exactly why shade sails are the 12-month answer |
 | Council | Save two scenarios → compare side by side → Council CSV | Material ready to hand to council, all labelled as model estimates |
 | Phone | Scan the Console's QR code → choose "Commuter" | Today card: when to leave, which way to walk, how many fewer minutes in the sun |
+| Phone | **Got a few minutes? → Shady break**, then tap − to 5 min | 12:30 on a 33°C day: only spots you can sit at and still be back in time, ranked by shade while you sit. At 5 min nothing fits, and the screen offers the smallest budget that works |
 | Phone | Switch to "Driver" → Texts → JOIN → `1 6` | People without the app are covered too. SMS is simulated in the demo; production would use a local gateway |
 | Close | **Impact** tab, then **Limits** tab | A reproducible offline evaluation, and an upfront account of who it doesn't serve yet (delivery drivers, merchants and frontline workers are now covered; the page marks each group covered / partly / not yet) |
 
@@ -197,6 +217,7 @@ backend/server.py        FastAPI: API + static frontend + SSE live stream
 backend/lumen/           geo / sun / precinct / shade / crowd / router / engine / evaluate / brief / live
                          whatif (scenario overlay, before/after, cost, saving)
                          personal (phone home screens and recommendations per role) · sms (simulated SMS channel)
+                         nearby (places that fit a time budget: POIs, opening hours, rest-spot shade)
 data/whatif/             Saved scenarios (not committed)
 node/window_node.py      Window Node demo
 frontend/                Vite + React + MapLibre GL; / is the Console, /m is the phone PWA (src/mobile/)
@@ -209,7 +230,7 @@ frontend/                Vite + React + MapLibre GL; / is the Console, /m is the
 
 **What-if:** `POST /api/whatif/compare` (`{items, years, scenario, t}` → scenario key + before/after; afterwards `/api/state` and `/api/route` accept `&plan=<key>`) · `GET/POST /api/whatif/plans` · `DELETE /api/whatif/plans/{id}` · `GET /api/whatif/side-by-side?ids=` · `GET /api/whatif/export.csv?ids=` (`POST` exports an unsaved draft)
 
-**Phone app:** `GET /api/me/commuter?stop=&office=&arrive=09:00` · `GET /api/me/driver?streets=Swan Street,Cremorne Street` · `GET /api/me/merchant?node=node-03&open=07:00&close=16:00` · `GET /api/me/council` · `POST /api/sms` (`{session, text}`, simulated SMS gateway)
+**Phone app:** `GET /api/me/commuter?stop=&office=&arrive=09:00` · `GET /api/me/driver?streets=Swan Street,Cremorne Street` · `GET /api/me/merchant?node=node-03&open=07:00&close=16:00` · `GET /api/me/council` · `POST /api/sms` (`{session, text}`, simulated SMS gateway) · `GET /api/nearby?want=coffee&budget=15&from=<office id>&t=750` (add `&shape=via&to=<id>` for a stop on the way; `want` is one of the keys in `/api/meta` → `nearby`)
 
 </details>
 

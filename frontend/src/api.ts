@@ -15,6 +15,7 @@ export type Meta = {
   stats: { buildings: number; trees: number; segments: number; network_km: number };
   llm: string | null;
   streets: string[];
+  nearby: NearbyCat[];
   lan_url: string;
   whatif: {
     tree_sizes: Record<TreeSize, { r: number; h: number; label: string }>;
@@ -138,6 +139,35 @@ export type CommuterHome = {
   options: Partial<Record<Route["mode"], Walk>>;
   recommendations: Rec[];
 };
+// ------------------------------------------------------------------ nearby in N minutes
+export type NearbyCat = { key: string; label: string; kind: "errand" | "stay"; count: number; dwell: number | null };
+export type NearbyChip = { k: "open" | "unknown" | "shade" | "sun" | "seat" | "warn" | "queue" | "quiet" | "busy"; t: string };
+export type NearbyPlace = {
+  id: string; name: string; named: boolean; tag: string; type: string; address: string; lon: number; lat: number;
+  mode: Route["mode"]; route_label: string;
+  walk_out: number; walk_back: number; walk: number; dwell: number; total: number; spare: number; detour: number | null;
+  arrive_at: string; leave_at: string; back_at: string;
+  sun_min: number; shaded_pct: number; crowded_min: number; comfort: number; spot_los: string;
+  hours: { state: "open" | "assumed_open" | "always"; text: string | null; closes: number | null; assumed?: boolean };
+  spot?: { shade_pct: number; shade_m2: number | null; shade_ok: boolean; seats: number; covered: boolean; park: boolean };
+  chips: NearbyChip[];
+  geometry: { out: [number, number][]; back: [number, number][] | null };
+  steps: { out: WalkStep[]; back: WalkStep[] | null };
+  /** every way of walking it that still fits the budget; the fields above are the "auto" pick */
+  options: Partial<Record<Route["mode"], NearbyWalk>>;
+};
+export type NearbyWalk = Pick<NearbyPlace, "mode" | "route_label" | "walk_out" | "walk_back" | "walk" | "dwell" | "total" | "spare"
+  | "detour" | "arrive_at" | "leave_at" | "back_at" | "sun_min" | "shaded_pct" | "crowded_min" | "comfort" | "geometry" | "chips" | "steps">;
+export type Turn = "start" | "straight" | "slight-left" | "slight-right" | "left" | "right" | "uturn";
+export type WalkStep = Step & { turn: Turn; heading: string; minutes: number; path: [number, number][] };
+export type NearbyResponse = {
+  want: string; label: string; noun: string; nouns: string; kind: "errand" | "stay"; verb: string;
+  shape: "return" | "via" | "oneway"; prefer: string; budget: number; minutes: number; time: string; temp_c: number;
+  hot: boolean; sun_up: boolean; night: boolean; from: string; to: string | null; direct_min: number | null;
+  counts: { places: number; closed: number; too_far: number; fit: number }; need_min: number | null;
+  results: NearbyPlace[]; note: string;
+};
+
 export type StreetDay = {
   street: string; short: string;
   timeline: { t: number; per_m: number; los: string }[];
