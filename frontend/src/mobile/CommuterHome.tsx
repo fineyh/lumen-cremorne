@@ -1,8 +1,25 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Clock, Footprints, MapPin, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock } from "lucide-react";
+import { ChevronDown, Clock, Footprints, MapPin, Sparkles, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock, type LucideIcon } from "lucide-react";
 import { get, LOS, LOS_COLORS, MODE_COLORS, type CommuterHome as Home, type Meta, type Route } from "../api";
 import MiniMap from "./MiniMap";
 import type { Settings } from "./MobileApp";
+
+type Pref = "auto" | Route["mode"];
+const PREFS: { key: Pref; label: string; icon: LucideIcon }[] = [
+  { key: "auto", label: "Auto", icon: Sparkles },
+  { key: "shortest", label: "Shortest", icon: Footprints },
+  { key: "coolest", label: "Shadiest", icon: TreeDeciduous },
+  { key: "calmest", label: "Quietest", icon: Users },
+];
+const PREF_KEY = "lumen.phone.routePref";
+function loadPref(): Pref {
+  try {
+    const v = localStorage.getItem(PREF_KEY);
+    return PREFS.some((p) => p.key === v) ? (v as Pref) : "auto";
+  } catch {
+    return "auto";
+  }
+}
 
 type MeetingData = { to: string; to_id: string; time: string; temp_c: number; heat_matters: boolean; route: Route; shortest: Route };
 
@@ -11,6 +28,15 @@ export default function CommuterHome({ meta, s, scenario }: { meta: Meta; s: Set
   const [meeting, setMeeting] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState(false);
+  const [pref, setPrefState] = useState<Pref>(loadPref);
+  const setPref = (p: Pref) => {
+    setPrefState(p);
+    try {
+      localStorage.setItem(PREF_KEY, p);
+    } catch {
+      /* private mode: remembered for this visit only */
+    }
+  };
 
   useEffect(() => {
     setErr(false);
@@ -22,8 +48,27 @@ export default function CommuterHome({ meta, s, scenario }: { meta: Meta; s: Set
   if (err) return <p className="m-empty">Couldn't reach Lumen. Are you on the precinct Wi-Fi?</p>;
   if (!home) return <Skeleton />;
   const t = home.today;
-  const r = t.route;
-  const v = t.vs_shortest;
+  const w = (pref !== "auto" && home.options?.[pref]) || t;
+  const r = w.route;
+  const v = w.vs_shortest;
+  const lines = w === t ? t.lines : w.lines;
+  const autoLabel = PREFS.find((p) => p.key === t.route.mode)!.label.toLowerCase();
+
+  // one line per distinct path; the chosen one is drawn on top in its colour, the rest stay tappable underneath
+  const same = (x: Route) => x.edges.join();
+  const groups: { modes: Route["mode"][]; route: Route }[] = [];
+  for (const m of ["shortest", "coolest", "calmest"] as const) {
+    const o = home.options?.[m];
+    if (!o) continue;
+    const g = groups.find((x) => same(x.route) === same(o.route));
+    if (g) g.modes.push(m);
+    else groups.push({ modes: [m], route: o.route });
+  }
+  if (!groups.some((g) => same(g.route) === same(r))) groups.push({ modes: [r.mode], route: r });
+  const mapLines = groups.map((g) => {
+    const on = same(g.route) === same(r);
+    return { coords: g.route.geometry.coordinates, color: MODE_COLORS[on ? r.mode : g.modes[0]], muted: !on };
+  });
   const hot = home.scenario.heat_matters;
   const lunch = home.recommendations.find((x) => x.kind === "lunch");
   const meet = home.recommendations.find((x) => x.kind === "meeting");
@@ -38,8 +83,8 @@ export default function CommuterHome({ meta, s, scenario }: { meta: Meta; s: Set
           <span className="today-temp"><Thermometer size={13} /> {home.scenario.tmax}°C max</span>
         </div>
         <small className="today-lbl">Leave {home.from.replace(" Station", "")} at</small>
-        <div className="today-time">{t.leave_at}</div>
-        <div className="today-sub"><Clock size={13} /> at {home.to} by {t.arrive_at} · you start {home.arrive_by}</div>
+        <div className="today-time">{w.leave_at}</div>
+        <div className="today-sub"><Clock size={13} /> at {home.to} by {w.arrive_at} · you start {home.arrive_by}</div>
         <div className="today-chips">
           {v.sun_saved > 0.05 && <span className="tchip"><Sun size={12} /> {v.sun_saved.toFixed(1)} min less sun</span>}
           {v.crowd_saved > 0.05 && <span className="tchip"><Users size={12} /> {v.crowd_saved.toFixed(1)} min less crowding</span>}
@@ -49,15 +94,37 @@ export default function CommuterHome({ meta, s, scenario }: { meta: Meta; s: Set
       </section>
 
       <section className="m-card">
-        <MiniMap lines={[{ coords: r.geometry.coordinates, color: MODE_COLORS[r.mode] }]} />
-        <div className="route-sum">
+        <div className="pref" role="radiogroup" aria-label="Route preference">
+          {PREFS.map(({ key, label, icon: Icon }) => {
+            const o = key === "auto" ? t : home.options?.[key];
+            if (!o) return null;
+            const c = key === "auto" ? "var(--ink)" : MODE_COLORS[key];
+            return (
+              <button key={key} role="radio" aria-checked={pref === key} className={pref === key ? "on" : ""}
+                style={{ ["--c" as string]: c }} onClick={() => setPref(key)}>
+                <span className="pref-ic"><Icon size={15} /></span>
+                <b>{label}</b>
+                <small>{o.route.minutes.toFixed(1)} min</small>
+              </button>
+            );
+          })}
+        </div>
+        <p className="pref-note">
+          {pref === "auto"
+            ? <>Weighs sun, crowds and walking time. Right now that's the <b style={{ color: MODE_COLORS[t.route.mode] }}>{autoLabel}</b> route.</>
+            : pref === "coolest" && !hot
+              ? <>It's mild today, so shade barely matters. Tap a faded line to compare.</>
+              : <>Tap a faded line on the map to compare.</>}
+        </p>
+        <MiniMap lines={mapLines} onPick={(i) => setPref(groups[i].modes.includes(r.mode) ? pref : groups[i].modes[0])} />
+        <div className="route-sum" key={pref}>
           <div><b>{r.minutes.toFixed(1)}</b><small>min walk</small></div>
           <div><b>{r.sun_minutes.toFixed(1)}</b><small>min in sun</small></div>
           <div><b>{r.shaded_pct}%</b><small>shaded</small></div>
           <div><b>{r.comfort}</b><small>comfort</small></div>
         </div>
         <ul className="m-lines">
-          {t.lines.map((l, i) => <li key={i}>{l}</li>)}
+          {lines.map((l, i) => <li key={i}>{l}</li>)}
         </ul>
         <button className="m-expand" onClick={() => setOpen(!open)}>
           Turn by turn <ChevronDown size={15} style={{ transform: open ? "rotate(180deg)" : "none" }} />

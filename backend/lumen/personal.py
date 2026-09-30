@@ -17,7 +17,7 @@ import shapely
 from .brief import polish
 from .crowd import LOS_LETTERS
 from .engine import Lumen, fmt_time
-from .router import comfort, heat_factor
+from .router import MODES, comfort, heat_factor
 
 AREA_BUFFER = 120.0   # m around Cremorne: its boundary streets (Swan St) count as "in the precinct"
 LUNCH_RADIUS = 400.0  # m from the office
@@ -58,17 +58,21 @@ def street_list(lumen: Lumen) -> list[str]:
 
 # ---------------------------------------------------------------------- office worker
 def _best_departure(lumen: Lumen, a: int, b: int, scenario: str, arrive: int):
-    """Try leaving the station every 5 minutes before `arrive`; score each route and time."""
+    """Try leaving the station every 5 minutes before `arrive`; score each route and time.
+
+    Returns the best (route, time) overall, the best time for each route mode, and the usual trip
+    (shortest route, latest departure)."""
     r = lumen.router
     probe = lumen.conditions(scenario, arrive - 10, shade_minutes=15 * round((arrive - 10) / 15))
     walk = r.path_stats(r._path(a, b, r.weights("shortest", probe)), probe)["minutes"]
     latest = int(5 * math.floor((arrive - walk - 1) / 5))
-    best, usual = None, None
+    per_mode: dict[str, tuple] = {}
+    usual = None
     for leave in range(latest - 30, latest + 1, 5):
         cond = lumen.conditions(scenario, leave, shade_minutes=15 * round(leave / 15))
         h = min(1.5, heat_factor(cond.temp_c))
         ce = comfort(cond)
-        for mode in ("shortest", "coolest", "calmest"):
+        for mode in MODES:
             nodes = r._path(a, b, r.weights(mode, cond))
             st = r.path_stats(nodes, cond, ce)
             if leave + st["minutes"] > arrive + 0.01:
@@ -76,11 +80,52 @@ def _best_departure(lumen: Lumen, a: int, b: int, scenario: str, arrive: int):
             early = arrive - leave - st["minutes"]
             score = st["minutes"] + SUN_WEIGHT * h * st["sun_minutes"] + CROWD_WEIGHT * st["crowded_minutes"] + EARLY_WEIGHT * early
             cand = (score, -leave, mode, leave, nodes, cond, st)
-            if best is None or cand[:2] < best[:2]:
-                best = cand
+            if mode not in per_mode or cand[:2] < per_mode[mode][:2]:
+                per_mode[mode] = cand
             if mode == "shortest" and leave == latest:
                 usual = (leave, nodes, cond, st)
-    return best, usual
+    best = min(per_mode.values(), key=lambda c: c[:2])
+    return best, per_mode, usual
+
+
+def _card(lumen: Lumen, a: int, b: int, cand: tuple, stop_name: str, office_name: str, usual, auto: bool) -> dict:
+    """One walk (route + departure time) with its numbers and the plain-English lines under the map."""
+    _, _, mode, leave, nodes, cond, st = cand
+    route = lumen.router.describe(nodes, mode, cond)
+    short_now = lumen.router.path_stats(lumen.router._path(a, b, lumen.router.weights("shortest", cond)), cond)
+    vs_short = {
+        "sun_saved": round(short_now["sun_minutes"] - st["sun_minutes"], 1),
+        "crowd_saved": round(short_now["crowded_minutes"] - st["crowded_minutes"], 1),
+        "extra_min": round(st["minutes"] - short_now["minutes"], 1),
+    }
+    via = [s["street"] for s in route["steps"] if s["street"] not in ("laneway", "crossing")]
+    via = list(dict.fromkeys(via))[:2]
+    tip = next((s for s in route["steps"] if s["shady_side"] and s["length_m"] > 60), None)
+    lines = [f"Leave {stop_name} at {fmt_time(leave)} and walk {route['minutes']:.1f} min via "
+             f"{', '.join(_short(v) for v in via)} to {office_name}."]
+    same = vs_short["sun_saved"] <= 0.05 and vs_short["crowd_saved"] <= 0.05
+    if mode == "shortest" and not auto:
+        lines.append("The most direct way, no detours.")
+    elif mode == "shortest" or same:
+        best_at = "most comfortable" if auto else {"coolest": "shadiest", "calmest": "least crowded"}[mode]
+        lines.append(f"The shortest way is also the {best_at} one this morning.")
+    else:
+        bits = []
+        if vs_short["sun_saved"] > 0.05:
+            bits.append(f"{vs_short['sun_saved']:.1f} min less sun")
+        if vs_short["crowd_saved"] > 0.05:
+            bits.append(f"{vs_short['crowd_saved']:.1f} min less crowding")
+        lines.append(f"Compared with the shortest way: {' and '.join(bits)}, {max(0, vs_short['extra_min']):.1f} min more walking.")
+    if auto and usual:
+        u_leave, _, _, u = usual
+        if u_leave != leave and u["crowded_minutes"] - st["crowded_minutes"] > 0.2:
+            lines.append(f"Leaving at {fmt_time(u_leave)} the short way would put you in {u['crowded_minutes']:.1f} min of crowded footpath.")
+    if tip:
+        lines.append(f"Keep to the {tip['shady_side']} side of {_short(tip['street'])}.")
+    return {
+        "leave_at": fmt_time(leave), "leave_minutes": leave, "arrive_at": fmt_time(round(leave + route["minutes"])),
+        "temp_c": round(cond.temp_c, 1), "route": route, "vs_shortest": vs_short, "lines": lines,
+    }
 
 
 def _lunch(lumen: Lumen, office_node: int, scenario: str) -> dict | None:
@@ -150,15 +195,9 @@ def commuter(lumen: Lumen, stop: str, office: str, arrive: int, scenario: str, m
     sc = lumen.scenario(scenario)
     a, stop_name = lumen.resolve(stop)
     b, office_name = lumen.resolve(office)
-    best, usual = _best_departure(lumen, a, b, scenario, arrive)
-    _, _, mode, leave, nodes, cond, st = best
-    route = lumen.router.describe(nodes, mode, cond)
-    short_now = lumen.router.path_stats(lumen.router._path(a, b, lumen.router.weights("shortest", cond)), cond)
-    vs_short = {
-        "sun_saved": round(short_now["sun_minutes"] - st["sun_minutes"], 1),
-        "crowd_saved": round(short_now["crowded_minutes"] - st["crowded_minutes"], 1),
-        "extra_min": round(st["minutes"] - short_now["minutes"], 1),
-    }
+    best, per_mode, usual = _best_departure(lumen, a, b, scenario, arrive)
+    today = _card(lumen, a, b, best, stop_name, office_name, usual, auto=True)
+    options = {m: _card(lumen, a, b, c, stop_name, office_name, usual, auto=False) for m, c in per_mode.items()}
     vs_usual = None
     if usual:
         u_leave, _, _, u = usual
@@ -167,26 +206,7 @@ def commuter(lumen: Lumen, stop: str, office: str, arrive: int, scenario: str, m
     heat = heat_factor(lumen.conditions(scenario, 900).temp_c) > 0
     lunch = _lunch(lumen, b, scenario)
     meet = _meeting(lumen, office, meeting, scenario) if office in {o["id"] for o in lumen.p.offices} else None
-
-    via = [s["street"] for s in route["steps"] if s["street"] not in ("laneway", "crossing")]
-    via = list(dict.fromkeys(via))[:2]
-    tip = next((s for s in route["steps"] if s["shady_side"] and s["length_m"] > 60), None)
-    lines = [f"Leave {stop_name} at {fmt_time(leave)} and walk {route['minutes']:.1f} min via "
-             f"{', '.join(_short(v) for v in via)} to {office_name}."]
-    if route["mode"] == "shortest" or (vs_short["sun_saved"] <= 0.05 and vs_short["crowd_saved"] <= 0.05):
-        lines.append("The shortest way is also the most comfortable one this morning.")
-    else:
-        bits = []
-        if vs_short["sun_saved"] > 0.05:
-            bits.append(f"{vs_short['sun_saved']:.1f} min less sun")
-        if vs_short["crowd_saved"] > 0.05:
-            bits.append(f"{vs_short['crowd_saved']:.1f} min less crowding")
-        lines.append(f"Compared with the shortest way: {' and '.join(bits)}, {max(0, vs_short['extra_min']):.1f} min more walking.")
-    if vs_usual and vs_usual["leave"] != fmt_time(leave) and vs_usual["crowded_min"] - st["crowded_minutes"] > 0.2:
-        lines.append(f"Leaving at {vs_usual['leave']} the short way would put you in {vs_usual['crowded_min']:.1f} min of crowded footpath.")
-    if tip:
-        lines.append(f"Keep to the {tip['shady_side']} side of {_short(tip['street'])}.")
-    text, engine = polish(lines, "a commuter's phone card") if llm else (lines, "template")
+    text, engine = polish(today["lines"], "a commuter's phone card") if llm else (today["lines"], "template")
 
     recs = []
     if lunch:
@@ -215,11 +235,8 @@ def commuter(lumen: Lumen, stop: str, office: str, arrive: int, scenario: str, m
         "scenario": {"key": sc["key"], "label": sc["label"], "tmax": round(sc["tmax"]), "tmin": round(sc["tmin"]),
                      "date": str(sc["date"]), "heat_matters": heat},
         "from": stop_name, "to": office_name, "arrive_by": fmt_time(arrive),
-        "today": {
-            "leave_at": fmt_time(leave), "leave_minutes": leave, "arrive_at": fmt_time(round(leave + route["minutes"])),
-            "temp_c": round(cond.temp_c, 1), "route": route, "vs_shortest": vs_short, "vs_usual_time": vs_usual,
-            "lines": text, "engine": engine,
-        },
+        "today": {**today, "vs_usual_time": vs_usual, "lines": text, "engine": engine},
+        "options": options,
         "recommendations": recs,
     }
 

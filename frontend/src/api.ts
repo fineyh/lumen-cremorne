@@ -121,16 +121,21 @@ export type SideBySide = SavedPlan & WhatIfResponse;
 // ------------------------------------------------------------------ phone app
 export type Role = "commuter" | "driver" | "merchant" | "council";
 export type Rec = { kind: string; title: string; text: string; data?: unknown };
+export type Walk = {
+  leave_at: string; leave_minutes: number; arrive_at: string; temp_c: number; route: Route;
+  vs_shortest: { sun_saved: number; crowd_saved: number; extra_min: number };
+  lines: string[];
+};
 export type CommuterHome = {
   role: "commuter";
   scenario: { key: string; label: string; tmax: number; tmin: number; date: string; heat_matters: boolean };
   from: string; to: string; arrive_by: string;
-  today: {
-    leave_at: string; leave_minutes: number; arrive_at: string; temp_c: number; route: Route;
-    vs_shortest: { sun_saved: number; crowd_saved: number; extra_min: number };
+  today: Walk & {
     vs_usual_time: { leave: string; crowded_min: number; sun_min: number; comfort: number } | null;
-    lines: string[]; engine: string;
+    engine: string;
   };
+  /** the best departure for each route mode, so the phone can switch without another request */
+  options: Partial<Record<Route["mode"], Walk>>;
   recommendations: Rec[];
 };
 export type StreetDay = {

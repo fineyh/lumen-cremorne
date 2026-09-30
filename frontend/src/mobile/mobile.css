@@ -100,6 +100,22 @@ button:disabled { opacity: 0.45; cursor: default; }
 .mm-end { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 11px; border: 3px solid #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); }
 .mm-end.a { background: var(--ink); }
 .mm-end.b { background: var(--sun-deep); }
+.pref { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; margin-bottom: 8px; background: var(--sunken); border-radius: 16px; }
+.pref button { --c: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; border: none; background: none; border-radius: 12px; padding: 7px 2px 6px; color: var(--ink-3); font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.12s; }
+.pref button:active { transform: scale(0.96); }
+.pref button b { font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pref button small { font-size: 10.5px; font-weight: 600; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.pref-ic { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; margin-bottom: 2px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); transition: background 0.2s, color 0.2s; }
+.pref button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(11, 19, 36, 0.06), 0 6px 14px -8px rgba(11, 19, 36, 0.35); }
+.pref button.on .pref-ic { background: var(--c); color: #fff; }
+.pref button.on small { color: var(--c); opacity: 1; }
+.pref-note { margin: 0 2px 10px; font-size: 12px; color: var(--ink-3); line-height: 1.4; min-height: 17px; }
+.route-sum > div { animation: pref-in 0.28s ease-out both; }
+.route-sum > div:nth-child(2) { animation-delay: 0.03s; }
+.route-sum > div:nth-child(3) { animation-delay: 0.06s; }
+.route-sum > div:nth-child(4) { animation-delay: 0.09s; }
+@keyframes pref-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .route-sum > div { animation: none; } .pref button { transition: none; } }
 .route-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 12px 0 4px; text-align: center; }
 .route-sum b { display: block; font-size: 19px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .route-sum small { font-size: 11px; color: var(--ink-3); font-weight: 600; }
