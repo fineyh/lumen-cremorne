@@ -358,7 +358,7 @@ function PhoneModal({ meta, onClose }: { meta: Meta; onClose: () => void }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-x" onClick={onClose} aria-label="Close"><X size={18} /></button>
         <h2>Lumen on your phone</h2>
-        <p className="lede">Scan on the same Wi-Fi. No app, no login: pick a role and a couple of places. Settings stay on the phone.</p>
+        <p className="lede">Scan with your phone camera. No app, no login: pick a role and a couple of places. Settings stay on the phone.</p>
         <div className="seg wide">
           {[["", "Any role"], ["commuter", "Office worker"], ["driver", "Driver"], ["merchant", "Shop owner"]].map(([k, l]) => (
             <button key={k} className={role === k ? "on" : ""} onClick={() => setRole(k)}>{l}</button>
