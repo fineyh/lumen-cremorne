@@ -3,7 +3,7 @@ import { ArrowUp, Info, ShieldCheck } from "lucide-react";
 import { post } from "../api";
 
 type Msg = { me: boolean; text: string };
-const QUICK = ["JOIN", "1 6", "TODAY", "CHANGE", "HELP", "STOP"];
+const QUICK = ["JOIN", "1 6", "TODAY", "Busy at 5pm?", "CHANGE", "HELP", "STOP"];
 
 // crypto.randomUUID only exists on https/localhost; phones on the LAN reach us over plain http
 const rand = () => Array.from({ length: 4 }, () => Math.random().toString(36).slice(2, 10)).join("");
