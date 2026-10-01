@@ -53,13 +53,14 @@ QUERIES = {
         [out:json][timeout:60];
         (way["waterway"="river"]({bb}); way["natural"="water"]({bb}); relation["natural"="water"]({bb}););
         out body geom;""",
-    # Places people pop out to between meetings: shops, food, seats, parks, toilets, water.
+    # Places people pop out to between meetings: shops, food, seats, parks, toilets, water, gyms and classes.
     "pois": f"""
         [out:json][timeout:90];
         (
           nwr["amenity"~"^(cafe|fast_food|restaurant|pub|ice_cream|pharmacy|atm|bank|toilets|drinking_water|bench|shelter)$"]({bb});
-          nwr["shop"~"^(coffee|bakery|deli|convenience|supermarket|chemist)$"]({bb});
-          nwr["leisure"~"^(park|garden|picnic_table)$"]({bb});
+          nwr["shop"]({bb});
+          nwr["leisure"~"^(park|garden|picnic_table|fitness_centre|sports_centre|dance)$"]({bb});
+          nwr["amenity"="dojo"]({bb});
         );
         out tags geom;""",
     # Step-free access: kerb ramps, crossings, steps, accessible parking and toilets, platforms, bus stops.

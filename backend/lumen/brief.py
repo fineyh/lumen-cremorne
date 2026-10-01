@@ -178,7 +178,8 @@ TOOLS = [
         "parameters": {"type": "object", "properties": {"time": {"type": "string"}}}}},
     {"type": "function", "function": {
         "name": "find_nearby",
-        "description": "Places to pop out to within a time limit: coffee, food, a shady spot to rest, toilets, cash...",
+        "description": "Places to pop out to within a time limit: coffee, food, a shady spot to rest, toilets, cash, "
+                       "independent local shops (local), gyms and fitness classes (fitness)...",
         "parameters": {"type": "object", "properties": {
             "want": {"type": "string", "enum": list(nearby_mod.CATEGORIES)},
             "budget": {"type": "number", "description": "minutes available for the whole trip"},
@@ -191,15 +192,26 @@ NEARBY_WORDS = [
     ("coffee", r"coffee|latte|flat white|espresso|cappuccino|\bcaf[eé]"),
     ("lunch", r"sit[- ]down|restaurant|\bpub\b|lunch spot|place for lunch|somewhere to eat"),
     ("bite", r"snack|\bbite\b|sandwich|take-?away|bakery|pastry|ice cream|grab (?:some )?(?:food|lunch)|quick lunch"),
+    ("fitness", r"\bgym|work ?out|exercise|fitness|boxing|\bmma\b|martial art|yoga|pilates|climbing|boulder|\bclass(?:es)?\b"),
+    ("local", r"local shop|independent|bookshop|book ?store|bike shop|\bflorist|gift|boutique|browse|chocolate|butcher"),
     ("rest", r"\brest\b|\bsit\b|shady spot|somewhere to sit|\bseat\b|bench|\bpark\b|\bbreak\b|relax|breather"),
     ("groceries", r"grocer|supermarket|convenience|corner store|\bmilk\b"),
     ("pharmacy", r"pharmac|chemist|panadol|medicine"),
+    ("local", r"\bshops?\b|shopping"),  # after groceries: "a shop for milk" is groceries
     ("cash", r"\batm\b|\bcash\b|\bbank\b"),
     ("toilets", r"toilet|bathroom|restroom|\bloo\b"),
     ("water", r"drinking water|water (?:refill|fountain|bottle)|refill"),
 ]
+# a kind of place named in the question narrows a Lumen Local answer: (pattern, type label, noun)
+KIND_WORDS = [
+    (r"book ?(?:shop|store)", "Bookshop", "bookshop"), (r"bike shop|bicycle", "Bike shop", "bike shop"),
+    (r"butcher", "Butcher", "butcher"), (r"chocolate", "Chocolatier", "chocolate shop"), (r"gift", "Gift shop", "gift shop"),
+    (r"florist|flowers", "Florist", "florist"), (r"climbing|boulder", "Climbing", "climbing wall"),
+    (r"boxing", "Boxing gym", "boxing gym"), (r"mma|martial art", "Martial arts", "martial arts gym"),
+    (r"yoga", "Yoga studio", "yoga studio"), (r"pilates", "Pilates studio", "pilates studio"),
+]
 NEARBY_BUDGET = {"coffee": 10, "bite": 15, "lunch": 45, "rest": 20, "groceries": 15, "pharmacy": 15,
-                 "cash": 10, "toilets": 10, "water": 10}
+                 "cash": 10, "toilets": 10, "water": 10, "local": 20, "fitness": 90}
 
 
 def parse_time(text: str, default: int) -> int:
@@ -211,7 +223,7 @@ def parse_time(text: str, default: int) -> int:
             return 525
         if re.search(r"afternoon", text, re.I):
             return 930
-        if re.search(r"evening|tonight|home", text, re.I):
+        if re.search(r"evening|tonight|home|after work", text, re.I):
             return 1080
         return default
     h = int(m.group(1)); mi = int(m.group(2) or 0)
@@ -293,16 +305,30 @@ def tool_find_nearby(lumen, scenario, minutes, office_id, want=None, budget=None
     except (TypeError, ValueError):
         budget = None
     budget = budget or parse_budget(question) or NEARBY_BUDGET[want]
-    t = parse_time(time or question, minutes)
     places = _find_place(lumen, question)
-    via = trip == "via" or bool(re.search(r"on (?:my|the) way|en route|before work|way (?:in|to work)", question.lower()))
-    if via:
+    low = question.lower()
+    home = bool(re.search(r"after work|way home|heading home|before (?:my|the) train|before going home", low)) or \
+        want == "fitness" and trip != "return" and not re.search(r"lunch|morning|before work", low)
+    via = home or trip == "via" or bool(re.search(r"on (?:my|the) way|en route|before work|way (?:in|to work)", low))
+    t = parse_time(time or question, max(minutes, 1050) if home else minutes)
+    if home:
+        stops = [ref for _, ref in places if ref.startswith(("train-", "tram-"))]
+        origin, dest = office_id, (stops[-1] if stops else DEFAULT_ORIGIN)
+    elif via:
         stops = [ref for _, ref in places if ref.startswith(("train-", "tram-"))]
         offices = [ref for _, ref in places if not ref.startswith(("train-", "tram-"))]
         origin, dest = (stops[0] if stops else DEFAULT_ORIGIN), (offices[-1] if offices else office_id)
     else:
         origin, dest = (places[0][1] if places else office_id), None
-    res = nearby_mod.nearby(lumen, want, origin, dest, "via" if via else "return", budget, t, scenario)
+    kind = next((k for k in KIND_WORDS if re.search(k[0], low)), None) if want in nearby_mod.INDIE_ONLY else None
+    res = nearby_mod.nearby(lumen, want, origin, dest, "via" if via else "return", budget, t, scenario, limit=40 if kind else 6)
+    lead = ""
+    if kind:
+        same = [r for r in res["results"] if r["type"] == kind[1]]
+        if not same and res["results"]:
+            known = any(nearby_mod.type_label(pl) == kind[1] for pl in nearby_mod.places(lumen).of(want))
+            lead = (f"No {kind[2]} fits in {budget:g} min. " if known else f"There's no {kind[2]} on Lumen's map yet. ") +                 f"Closest {res['noun']} instead: "
+        res["results"] = same or res["results"]
     if not res["results"]:
         c = res["counts"]
         if c["places"] and c["closed"] == c["places"]:
@@ -332,7 +358,7 @@ def tool_find_nearby(lumen, scenario, minutes, office_id, want=None, budget=None
     others = [f"{r['name']} ({r['spare']:g} min spare)" if res["kind"] != "stay" else r["name"] for r in res["results"][1:3]]
     if others:
         answer += " Also fits: " + ", ".join(others) + "."
-    return answer, {"type": "route", "from": origin, "to": f"{b['lon']},{b['lat']}", "mode": b["mode"], "minutes": t}
+    return lead + answer, {"type": "route", "from": origin, "to": f"{b['lon']},{b['lat']}", "mode": b["mode"], "minutes": t}
 
 
 def tool_get_crowd(lumen, scenario, minutes, time=None, question="", **_):

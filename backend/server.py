@@ -157,8 +157,21 @@ def meta():
     }
 
 
+def _local_geojson() -> dict:
+    """Lumen Local: independent shops and gyms/classes, for the Console's Local layer."""
+    P = nearby_mod.places(lumen)
+    feats = [{"type": "Feature", "properties": {"id": pl.id, "name": pl.name, "type_label": nearby_mod.type_label(pl),
+                                                "category": "fitness" if "fitness" in pl.cats else "local",
+                                                "source": "hand" if pl.id.startswith("x") else "osm"},
+              "geometry": {"type": "Point", "coordinates": [pl.lon, pl.lat]}}
+             for pl in P.items if pl.cats & nearby_mod.INDIE_ONLY]
+    return {"type": "FeatureCollection", "features": feats}
+
+
 @app.get("/api/layers/{name}")
 def layer(name: str):
+    if name == "local":
+        return fast(_local_geojson())
     if name not in STATIC:
         raise HTTPException(404)
     return Response(STATIC[name], media_type="application/json")
@@ -383,11 +396,11 @@ def me_commuter(stop: str = "train-richmond", office: str | None = None, arrive:
 @app.get("/api/nearby")
 def nearby(want: str = "coffee", src: str | None = Query(None, alias="from"), to: str | None = None,
            shape: str = "return", budget: float = 10, t: int = 750, scenario: str = "hot", prefer: str = "auto",
-           step_free: bool = False):
+           step_free: bool = False, focus: str | None = None):
     """Places you can get to, use and get back from inside `budget` minutes (see lumen/nearby.py)."""
     try:
         return fast(nearby_mod.nearby(lumen, want, src or _default_office(), to, shape, budget, _minutes(t), scenario, prefer,
-                                      step_free=step_free))
+                                      step_free=step_free, focus=focus))
     except (ValueError, KeyError) as exc:
         raise HTTPException(400, f"bad request: {exc}")
 

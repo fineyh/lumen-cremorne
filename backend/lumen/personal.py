@@ -14,6 +14,7 @@ import re
 import numpy as np
 import shapely
 
+from . import nearby as nearby_mod
 from .brief import polish
 from .crowd import LOS_LETTERS
 from .engine import Lumen, fmt_time
@@ -203,6 +204,11 @@ def commuter(lumen: Lumen, stop: str, office: str, arrive: int, scenario: str, m
     best, per_mode, usual = _best_departure(lumen, a, b, scenario, arrive, step_free)
     today = _card(lumen, a, b, best, stop_name, office_name, usual, auto=True)
     options = {m: _card(lumen, a, b, c, stop_name, office_name, usual, auto=False) for m, c in per_mode.items()}
+    # Lumen Local: a shop, gym or park right beside the way you're walking anyway
+    day = sc["date"].weekday()
+    for card, c in ((today, best), *((options[m], c) for m, c in per_mode.items())):
+        card["on_the_way"] = nearby_mod.on_the_way(lumen, c[4], step_free=step_free, minutes=c[3], day=day,
+                                                    skip=office_name)
     vs_usual = None
     if usual:
         u_leave, _, _, u = usual

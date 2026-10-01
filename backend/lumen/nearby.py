@@ -12,8 +12,12 @@ Every leg is routed three ways (shortest / coolest / calmest) and the fastest-fe
 is kept, so on a hot day the walk out is shady too. Step-free, every leg avoids steps and raised kerbs,
 and a place you can only reach past one is left out (counted as `not_step_free`).
 
-Places are OpenStreetMap POIs (data/raw/pois.json). Opening hours come from OSM when mapped;
-otherwise a typical window for that kind of place is assumed and the result says so.
+Places are OpenStreetMap POIs (data/raw/pois.json) plus a hand-curated data/raw/local_extra.json of
+real places OSM is missing. Opening hours come from OSM when mapped; otherwise a typical window for that
+kind of place is assumed and the result says so.
+
+Lumen Local: "local" (independent shops) and "fitness" (gyms and classes) leave out chains, and
+`on_the_way` finds one or two of them, or a park, right beside the route on the Today card.
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ import math
 import re
 from dataclasses import dataclass, field
 
+import networkx as nx
 import numpy as np
 import shapely
 from shapely.geometry import Point, Polygon
@@ -60,7 +65,18 @@ CATEGORIES: dict[str, dict] = {
                 "tags": {"amenity": {"toilets"}}},
     "water": {"noun": ("water fountain", "water fountains"), "label": "Water refill", "kind": "errand", "verb": "to refill", "dwell": 1.0, "queue": False,
               "tags": {"amenity": {"drinking_water"}}},
+    # every other browsable shop joins "local" too (see Places._cats)
+    "local": {"noun": ("local shop", "local shops"), "label": "Local shops", "kind": "errand", "verb": "to browse", "dwell": 8.0, "queue": False,
+              "tags": {"shop": {"bakery", "deli", "chocolate"}}},
+    "fitness": {"noun": ("gym or class", "gyms and classes"), "label": "Gyms & classes", "kind": "errand", "verb": "for a class", "dwell": 45.0,
+                "queue": False, "tags": {"leisure": {"fitness_centre", "sports_centre", "dance"}, "amenity": {"dojo"}}},
 }
+INDIE_ONLY = {"local", "fitness"}  # chains still count as groceries, coffee ... but not as Lumen Local
+NOT_LOCAL = {"vacant", "car", "car_repair", "car_parts", "tyres", "storage_rental", "funeral_directors", "tobacco", "e-cigarette",
+             "dry_cleaning", "laundry", "travel_agency", "mobile_phone", "money_lender", "pawnbroker", "rental", "fuel"}
+GYM_SPORTS = {"climbing", "bouldering", "rock_climbing", "boxing", "kickboxing", "mma", "martial_arts", "judo", "karate",
+              "taekwondo", "yoga", "pilates", "fitness", "gymnastics", "dance", "crossfit"}
+BIG_VENUE_M2 = 5000.0   # a sports centre bigger than this (and with no gym-type sport) is a stadium, not a class
 DWELL_BY_TAG = {"supermarket": 8.0, "bank": 6.0, "pub": 30.0}
 TYPE_LABEL = {
     "cafe": "Café", "coffee": "Coffee shop", "fast_food": "Takeaway", "ice_cream": "Ice cream", "bakery": "Bakery",
@@ -68,7 +84,19 @@ TYPE_LABEL = {
     "pharmacy": "Pharmacy", "chemist": "Chemist", "atm": "ATM", "bank": "Bank", "toilets": "Public toilets",
     "drinking_water": "Drinking fountain", "park": "Park", "garden": "Garden", "bench": "Bench",
     "picnic_table": "Picnic table", "shelter": "Shelter",
+    "books": "Bookshop", "bicycle": "Bike shop", "gift": "Gift shop", "chocolate": "Chocolatier", "pastry": "Patisserie",
+    "butcher": "Butcher", "seafood": "Fishmonger", "health_food": "Health food", "garden_centre": "Plants & garden",
+    "florist": "Florist", "pet": "Pet shop", "clothes": "Clothing", "shoes": "Shoes", "bag": "Bags & accessories",
+    "furniture": "Furniture", "bed": "Beds", "interior_decoration": "Homewares", "houseware": "Homewares",
+    "charity": "Op shop", "second_hand": "Second-hand", "video": "Film & vinyl", "music": "Records", "art": "Art",
+    "massage": "Massage", "beauty": "Beauty", "hairdresser": "Hairdresser", "jewelry": "Jeweller", "optician": "Optician",
+    "alcohol": "Bottle shop", "wine": "Wine shop", "greengrocer": "Greengrocer", "cosmetics": "Cosmetics",
+    "fitness_centre": "Gym", "sports_centre": "Sports centre", "dance": "Dance studio", "dojo": "Martial arts",
 }
+SPORT_LABEL = {"climbing": "Climbing", "bouldering": "Climbing", "boxing": "Boxing gym", "kickboxing": "Boxing gym",
+               "mma": "Martial arts", "martial_arts": "Martial arts", "judo": "Martial arts", "karate": "Martial arts",
+               "taekwondo": "Martial arts", "yoga": "Yoga studio", "pilates": "Pilates studio", "dance": "Dance studio",
+               "crossfit": "CrossFit gym"}
 # Typical weekday hours (minutes) when OSM has none: Cremorne cafés are breakfast-and-lunch places.
 TYPICAL = {
     "cafe": [(420, 900)], "coffee": [(420, 900)], "bakery": [(420, 960)], "deli": [(480, 1020)],
@@ -76,6 +104,7 @@ TYPICAL = {
     "pub": [(720, 1380)], "convenience": [(420, 1320)], "supermarket": [(420, 1320)], "pharmacy": [(540, 1080)],
     "chemist": [(540, 1080)], "bank": [(570, 960)],
 }
+TYPICAL_BY_CAT = {"fitness": [(360, 1260)], "local": [(540, 1050)]}  # gyms run early and late; shops keep shop hours
 WEEKDAY_ONLY = {"bank"}
 DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 
@@ -170,6 +199,10 @@ class Place:
     poly: Polygon | None = None
     seats: int = 0
     covered: bool = False
+    independent: bool = True  # no brand tag: what Lumen Local shows
+    blurb: str | None = None
+    website: str | None = None
+    label: str | None = None  # type label when the tag alone isn't enough ("Climbing gym")
     samples: slice = field(default_factory=lambda: slice(0, 0))  # rows of Places.sample_xy
 
 
@@ -187,11 +220,13 @@ class Places:
         for e in raw:
             t = e.get("tags", {})
             tag = t.get("amenity") or t.get("shop") or t.get("leisure")
-            if not tag or t.get("access") in ("private", "no", "customers") and tag not in ("cafe", "restaurant"):
+            if not tag or tag == "vacant" or t.get("access") in ("private", "no", "customers") and tag not in ("cafe", "restaurant"):
                 continue
             geom = self._geometry(e)
             if geom is None:
                 continue
+            if tag == "sports_centre" and geom.area > BIG_VENUE_M2 and not GYM_SPORTS & set(re.split(r"[;,]\s*", t.get("sport", ""))):
+                continue  # Melbourne Park, Olympic Park
             if tag in ("park", "garden"):
                 if geom.geom_type != "Polygon" and geom.geom_type != "MultiPolygon":
                     continue
@@ -208,6 +243,7 @@ class Places:
         self._build_areas(areas)
         self._build_points(points)
         self._build_seats(seats)
+        self._build_extras()
         self._disambiguate()
         self._build_samples()
 
@@ -275,8 +311,11 @@ class Places:
         return pl
 
     @staticmethod
-    def _cats(tag: str) -> set[str]:
-        return {k for k, c in CATEGORIES.items() if any(tag in v for v in c["tags"].values())}
+    def _cats(tag: str, shop: bool = False, independent: bool = True) -> set[str]:
+        cats = {k for k, c in CATEGORIES.items() if any(tag in v for v in c["tags"].values())}
+        if shop and not cats and tag not in NOT_LOCAL:
+            cats.add("local")  # any other shop you can walk in and browse
+        return cats if independent else cats - INDIE_ONLY
 
     # -------------------------------------------------------------- builders
     def _build_areas(self, areas):
@@ -313,7 +352,11 @@ class Places:
             entries, edge = self._snap(pt.x, pt.y)
             if entries[0][1] > MAX_ACCESS:
                 continue
-            name = t.get("name") or t.get("brand")
+            name = re.sub(r"\s+", " ", t.get("name") or t.get("brand") or "").strip() or None
+            indie = not (t.get("brand") or t.get("brand:wikidata"))
+            cats = self._cats(tag, shop=t.get("shop") == tag, independent=indie)
+            if not cats or cats <= INDIE_ONLY and not name:
+                continue  # a car yard, or a shop with no name to send anyone to
             key = (re.sub(r"[^a-z0-9]|\bthe\b|hotel", "", (name or "").lower()), tag)
             if name and any(math.hypot(pt.x - a, pt.y - b) < 80 for a, b in seen.get(key, [])):
                 continue
@@ -322,8 +365,26 @@ class Places:
             num = t.get("addr:housenumber")
             addr = f"{num} {self._short(street)}" if num else f"on {self._short(street)}"
             pl = self._add(id=f"{e['type'][0]}{e['id']}", name=name or f"{TYPE_LABEL.get(tag, tag.title())}, {self._short(street)}",
-                           named=bool(name), tag=tag, cats=self._cats(tag), x=pt.x, y=pt.y, entries=entries, edge=edge,
-                           address=addr, hours_text=t.get("opening_hours"))
+                           named=bool(name), tag=tag, cats=cats, x=pt.x, y=pt.y, entries=entries, edge=edge,
+                           address=addr, hours_text=t.get("opening_hours"), independent=indie, blurb=t.get("description"),
+                           website=t.get("website"), label=_sport_label(t.get("sport")) if "fitness" in cats else None)
+            pl.hours = parse_hours(pl.hours_text)
+
+    def _build_extras(self):
+        """Real places OSM is missing, added by hand from public listings (data/raw/local_extra.json)."""
+        f = RAW / "local_extra.json"
+        for i, x in enumerate(json.loads(f.read_text(encoding="utf-8")) if f.exists() else []):
+            px, py = (float(v) for v in to_xy(x["lon"], x["lat"]))
+            entries, edge = self._snap(px, py)
+            if entries[0][1] > MAX_ACCESS:
+                continue
+            fit = x.get("kind") == "fitness"
+            tag = "fitness_centre" if fit else x.get("tag") or "gift"
+            pl = self._add(id=f"x{i}", name=x["name"], named=True, tag=tag, cats={"fitness"} if fit else self._cats(tag, shop=True),
+                           x=px, y=py, entries=entries, edge=edge,
+                           address=x.get("address") or f"on {self._short(self._street_at(px, py))}",
+                           hours_text=x.get("opening_hours"), blurb=x.get("blurb"), website=x.get("website"),
+                           label=_sport_label(x.get("tag")) if fit else None)
             pl.hours = parse_hours(pl.hours_text)
 
     def _build_seats(self, seats):
@@ -372,10 +433,10 @@ class Places:
                 q.name = f"{name} ({w})"
 
     def _landmark(self, x: float, y: float, within: float = 60.0) -> str | None:
-        """Closest named shop, café or park, so a bench reads "Bench by Baker Bleu" instead of a street."""
+        """Closest named café, food place or park, so a bench reads "Bench by Baker Bleu" instead of a street."""
         best = None
         for pl in self.items:
-            if not pl.named or pl.tag in ("atm", "toilets", "drinking_water"):
+            if not pl.named or pl.tag in ("atm", "toilets", "drinking_water") or pl.cats <= INDIE_ONLY:
                 continue
             d = pl.poly.distance(Point(x, y)) if pl.poly is not None else math.hypot(pl.x - x, pl.y - y)
             if d < within and (best is None or d < best[0]):
@@ -405,6 +466,9 @@ class Places:
             pl.samples = slice(start, len(xs))
         self.sample_pts = shapely.points(np.array(xs), np.array(ys)) if xs else np.array([])
 
+    def get(self, pid: str) -> Place | None:
+        return next((pl for pl in self.items if pl.id == pid), None)
+
     def of(self, want: str) -> list[Place]:
         return [pl for pl in self.items if want in pl.cats]
 
@@ -429,14 +493,27 @@ def _q15(t: float) -> int:
     return int(15 * round(t / 15))
 
 
+def _sport_label(sport: str | None) -> str | None:
+    return next((SPORT_LABEL[x] for x in re.split(r"[;,]\s*", sport or "") if x in SPORT_LABEL), None)
+
+
+def _typical(pl: Place) -> list[tuple[int, int]] | None:
+    return TYPICAL.get(pl.tag) or next((TYPICAL_BY_CAT[c] for c in TYPICAL_BY_CAT if c in pl.cats), None)
+
+
+def type_label(pl: Place) -> str:
+    return pl.label or TYPE_LABEL.get(pl.tag, pl.tag.replace("_", " ").capitalize())
+
+
 def _hours(pl: Place, day: int, arrive: float, leave: float) -> dict:
     """Open state for a visit from `arrive` to `leave` (minutes)."""
-    if pl.tag not in TYPICAL:
+    typical = _typical(pl)
+    if typical is None:
         return {"state": "always", "text": None, "closes": None, "opens": None}
     week = pl.hours
     assumed = week is None
     if assumed:
-        spans = [] if pl.tag in WEEKDAY_ONLY and day >= 5 else TYPICAL[pl.tag]
+        spans = [] if pl.tag in WEEKDAY_ONLY and day >= 5 else typical
         week = [spans] * 7
     close = _open_until(week, day, arrive)
     if close is None or close < leave - 0.01:
@@ -455,7 +532,8 @@ def _coords(nodes: list[int], p) -> list[list[float]]:
 
 def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape: str = "return",
            budget: float = 10.0, minutes: int = 750, scenario: str = "hot", prefer: str = "auto", limit: int = 6,
-           step_free: bool = False) -> dict:
+           step_free: bool = False, focus: str | None = None) -> dict:
+    """`focus`: a place id to keep in the results if it fits (opened from "On your way"), else say why not."""
     if want not in CATEGORIES:
         raise KeyError(want)
     shape = shape if shape in SHAPES else "return"
@@ -490,6 +568,7 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
 
     counts = {"places": 0, "closed": 0, "too_far": 0, "fit": 0, "not_step_free": 0}
     need = math.inf
+    miss: dict = {}  # why the focus place didn't make it
     cands = []
     for pl in P.of(want):
         counts["places"] += 1
@@ -513,6 +592,8 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
             eb = r.path_stats(back["shortest"][1][node], cond2, ce2)["edges"] if back else []
             if not r.access_summary([*eo, *eb])["step_free"]:
                 counts["not_step_free"] += 1
+                if pl.id == focus:
+                    miss = {"reason": "not_step_free"}
                 continue
             m_out, m_back = float(p.e_len[eo].sum()), float(p.e_len[eb].sum()) if back else 0.0
         min_walk = (m_out + m_back + (2 if back else 1) * acc) / WALK_SPEED / 60
@@ -527,10 +608,14 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
         hrs = _hours(pl, day, arrive0, arrive0 + dwell)
         if hrs["state"] == "closed":
             counts["closed"] += 1
+            if pl.id == focus:
+                miss = {"reason": "closed", "hours": hrs}
             continue
         if min_walk + dwell > budget + 1e-6:
             counts["too_far"] += 1
             need = min(need, min_walk + dwell)
+            if pl.id == focus:
+                miss = {"reason": "too_far", "need_min": math.ceil(min_walk + dwell)}
             continue
         cands.append((pl, node, acc_min, dwell, hrs))
 
@@ -557,6 +642,8 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
             if pick is None or feel < pick["feel"] - 1e-9:
                 pick = opts[m]
         if pick is None:
+            if pl.id == focus:
+                miss = {"reason": "too_far", "need_min": math.ceil(budget + 1)}
             continue
         pick["opts"] = opts  # every way that fits, so the walker can choose
         counts["fit"] += 1
@@ -592,8 +679,8 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
     for pl, node, acc_min, dwell, hrs, pk in results:
         los = int(cond1.crowd.los[pl.edge])
         item = {
-            "id": pl.id, "name": pl.name, "named": pl.named, "tag": pl.tag, "type": TYPE_LABEL.get(pl.tag, pl.tag),
-            "address": pl.address, "lon": pl.lon, "lat": pl.lat,
+            "id": pl.id, "name": pl.name, "named": pl.named, "tag": pl.tag, "type": type_label(pl),
+            "address": pl.address, "lon": pl.lon, "lat": pl.lat, "blurb": pl.blurb, "website": pl.website,
             **walk_fields(pk, acc_min, dwell),
             "spot_los": LOS_LETTERS[los],
             "hours": hrs,
@@ -616,8 +703,9 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
         item["chips"] = _chips(item, cat, h, stay, night, dwell, minutes)
         ranked.append((rank, item, pk, acc_min, dwell))
     ranked.sort(key=lambda x: x[0])
+    keep = next((x for x in ranked[limit:] if x[1]["id"] == focus), None) if focus else None
     items = []
-    for _, it, pk, acc_min, dwell in ranked[:limit]:
+    for _, it, pk, acc_min, dwell in (ranked[:limit - 1] + [keep] if keep else ranked[:limit]):
         # turn-by-turn for the in-app walk; the leg back is walked later, so under later conditions
         def steps(o: dict) -> dict:
             return {"out": r.walk_steps(o["out"], cond1), "back": r.walk_steps(o["back"], cond2) if back else None}
@@ -639,9 +727,51 @@ def nearby(lumen: Lumen, want: str, origin: str, dest: str | None = None, shape:
         "from": a_name, "to": b_name, "direct_min": round(direct, 1) if direct is not None else None,
         "counts": counts, "need_min": math.ceil(need) if not items and need < math.inf else None,
         "results": items,
+        "focus": _focus(P, focus, miss, items),
         "note": "Places from OpenStreetMap. Hours are OSM's where mapped, otherwise typical for the kind of place. "
                 "Queue times are estimates that grow in the morning and lunch rush.",
     }
+
+
+def _focus(P: Places, focus: str | None, miss: dict, items: list[dict]) -> dict | None:
+    pl = P.get(focus) if focus else None
+    if pl is None:
+        return None
+    fits = any(it["id"] == focus for it in items)
+    return {"id": pl.id, "name": pl.name, "fits": fits, **({} if fits else miss or {"reason": "elsewhere"})}
+
+
+def on_the_way(lumen: Lumen, nodes: list[int], *, step_free: bool = False, minutes: int = 525, day: int = 0,
+               limit: int = 2, max_off: float = 120.0, skip: str | None = None) -> list[dict]:
+    """Independent shops, gyms and parks within `max_off` m of a walk you're already doing.
+
+    One short Dijkstra from every node on the route, cut off at `max_off`, so it's cheap enough for every
+    Today card. Sorted by the extra walking (there and back to the route); one place per category.
+    `skip` names the place you're walking to, which is never "on the way" to itself."""
+    P = places(lumen)
+    p, r = lumen.p, lumen.router
+    w = p.e_len * r.sf_mult + r.sf_add if step_free else p.e_len  # step-free, a kerb in the way is far too far
+    dist = nx.multi_source_dijkstra_path_length(p.graph, set(nodes), cutoff=max_off, weight=r._weight_fn(w))
+    cands = []
+    for pl in P.items:
+        cat = next((c for c in ("fitness", "local", "rest") if c in pl.cats), None)
+        if cat is None or cat == "rest" and (pl.poly is None or not pl.named) or skip and pl.name == skip:
+            continue  # a named park, not a lone bench
+        off = min((dist[n] + acc for n, acc in pl.entries if n in dist), default=math.inf)
+        if off <= max_off:
+            cands.append((off, cat, pl))
+    out, used = [], set()
+    for off, cat, pl in sorted(cands, key=lambda c: (c[0], not c[2].named)):
+        if cat in used:
+            continue
+        used.add(cat)
+        hrs = _hours(pl, day, minutes, minutes + 1)
+        out.append({"id": pl.id, "name": pl.name, "type_label": type_label(pl), "category": cat, "lon": pl.lon, "lat": pl.lat,
+                    "off_m": round(float(off)), "off_min": round(float(2 * off / WALK_SPEED / 60), 1), "on_route": bool(off < 12),
+                    "hours": hrs, "blurb": pl.blurb})
+        if len(out) == limit:
+            break
+    return out
 
 
 def _spot_shade(lumen: Lumen, P: Places, d, minutes: int, results: list, budget: float) -> dict[str, float]:
