@@ -63,7 +63,7 @@ export default function DriverHome({ s, scenario, onSms }: { s: Settings; scenar
       ))}
 
       <section className="m-card sms-prev" onClick={onSms}>
-        <div className="rec-h"><span className="rec-ic sms"><MessageSquare size={16} /></span><b>As a text at 6:30am</b></div>
+        <div className="rec-h"><span className="rec-ic sms-ic"><MessageSquare size={16} /></span><b>As a text at 6:30am</b></div>
         <div className="bubble-in">{home.sms}</div>
         <small>{home.sms.length} characters · plain GSM text · tap to try the SMS sign-up</small>
       </section>

@@ -180,7 +180,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .rec-ic { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--sunken); color: var(--ink-2); flex: none; }
 .rec-ic.lunch { background: #fff1e0; color: var(--sun-deep); }
 .rec-ic.meet { background: #e0f2fe; color: #0369a1; }
-.rec-ic.sms { background: #dcfce7; color: #15803d; }
+.rec-ic.sms-ic { background: #dcfce7; color: #15803d; }
 .rec-ic.roster { background: #ede9fe; color: #6d28d9; }
 .rec-ic.open, .rec-ic.close { background: #e0f2fe; color: #0369a1; }
 .rec-ic.quiet { background: #ecfccb; color: #4d7c0f; }
