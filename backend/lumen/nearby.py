@@ -74,6 +74,7 @@ CATEGORIES: dict[str, dict] = {
 INDIE_ONLY = {"local", "fitness"}  # chains still count as groceries, coffee ... but not as Lumen Local
 NOT_LOCAL = {"vacant", "car", "car_repair", "car_parts", "tyres", "storage_rental", "funeral_directors", "tobacco", "e-cigarette",
              "dry_cleaning", "laundry", "travel_agency", "mobile_phone", "money_lender", "pawnbroker", "rental", "fuel"}
+CHAINS = {"king living"}  # national chains OSM hasn't given a brand tag yet (lower-case names)
 GYM_SPORTS = {"climbing", "bouldering", "rock_climbing", "boxing", "kickboxing", "mma", "martial_arts", "judo", "karate",
               "taekwondo", "yoga", "pilates", "fitness", "gymnastics", "dance", "crossfit"}
 BIG_VENUE_M2 = 5000.0   # a sports centre bigger than this (and with no gym-type sport) is a stadium, not a class
@@ -353,7 +354,7 @@ class Places:
             if entries[0][1] > MAX_ACCESS:
                 continue
             name = re.sub(r"\s+", " ", t.get("name") or t.get("brand") or "").strip() or None
-            indie = not (t.get("brand") or t.get("brand:wikidata"))
+            indie = not (t.get("brand") or t.get("brand:wikidata")) and (name or "").lower() not in CHAINS
             cats = self._cats(tag, shop=t.get("shop") == tag, independent=indie)
             if not cats or cats <= INDIE_ONLY and not name:
                 continue  # a car yard, or a shop with no name to send anyone to
