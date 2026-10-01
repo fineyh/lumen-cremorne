@@ -18,6 +18,7 @@ Built at **FEIT Hackathon 2026** for the Cremorne Digital Hub challenge. The who
 - **Three routes, one score.** Shortest, coolest and least crowded routes, each with a 0–100 Comfort Score.
 - **Step-free when you need it.** Stations, tram and bus stops, kerb ramps, signalised crossings, steps, accessible parking and toilets are on the map from OpenStreetMap. One switch makes every route avoid steps and raised kerbs, and warns when a tram stop has no level-access platform.
 - **"I've got 10 minutes."** Pick coffee, a quick bite, a shady spot to sit, toilets or cash and a time budget; Lumen lists only the places you can reach, use and get back from in time, routed the comfortable way.
+- **Lumen Local: a reason to come in.** Cremorne's independent shops, gyms and classes sit next to coffee and shade in Nearby, chains left out. The Today card points out one or two of them, or a park, right beside the walk you're already doing ("Abbotsford Cycles · 1.6 min off route"), and the Console has a Local layer.
 - **Evidence for council.** Plant trees, add shade sails or close a footpath on the map, then see the before/after for all 304 station-to-office walks, with a cost estimate, in under half a second.
 - **One precinct, many users.** A Console for the precinct hub and council, and a phone PWA for commuters, delivery drivers, café owners and the hub, with an SMS channel for drivers who won't install an app.
 - **Offline, local LLM.** An optional Ollama model rewords the Morning Brief and powers Ask Lumen. If the model changes any number, Lumen falls back to a deterministic template.
@@ -158,13 +159,15 @@ Onboarding asks only for your role and a few places, and stores them on the phon
 walk out + time there + walk back (or on to work)  <=  your budget
 ```
 
-- **Places.** 9 categories from OpenStreetMap POIs (`data/raw/pois.json`): coffee, quick bite, sit-down lunch, shady rest (parks, benches, picnic tables, shelters), groceries, pharmacy, cash, toilets, water.
+- **Places.** 11 categories from OpenStreetMap POIs (`data/raw/pois.json`): coffee, quick bite, sit-down lunch, shady rest (parks, benches, picnic tables, shelters), groceries, pharmacy, cash, toilets, water, and two from Lumen Local (below).
+- **Lumen Local.** *Local shops* is every independent shop you can walk in and browse (bookshops, bike shops, bakeries, a chocolatier, a butcher, an op shop…); *Gyms & classes* is fitness centres, climbing walls, dojos and dance studios. Both leave out chains (anything with an OSM `brand` tag), vacant shops, car yards and other shops you can't browse, sports pitches, and stadium-sized venues like Melbourne Park. Gyms & classes starts at 90 min heading home, since a class is ~45 min on its own. Results show an "Independent" tag, the shop's own description and website when OSM has them.
+- **On your way.** The Today card lists up to two independent places, or a named park, within ~120 m (on foot, step-free if you've switched that on) of the route it's showing, one per kind, sorted by the detour. Tap one and Nearby opens on that place, on the trip it fits: on your way in if it's open as you pass, otherwise a lunchtime wander, or heading home for a class. If it doesn't fit, Nearby says why and offers the fix ("Make it 20 min", "Try 9am").
 - **Time there.** Errands use an estimate that grows in the morning and lunch rush (a coffee is ~3 min, ~4.5 min at 8:45). A rest stop gets whatever the budget leaves, rounded down to whole minutes.
 - **Opening hours.** Read from OSM `opening_hours` where mapped (a small parser covers the forms used in Cremorne). Where they aren't, a typical window for that kind of place is assumed and the result says "Hours not listed". Closed places are dropped, and if everything is closed or nothing fits, the screen says so and offers a fix ("Make it 11 min", "Try 10am").
 - **What a normal map can't tell you.** Every leg is routed shortest / coolest / calmest and the most comfortable one that still fits is kept. Rest spots are ranked by how long you can sit and how shady the spot is *while you sit there* (the shadow model is sampled over your stay; parks by shaded area), plus crowding at the door.
 - **Pick the way.** Like the Today card, the best place has Auto / Shortest / Shadiest / Quietest; any way that doesn't fit the budget is greyed out, and the other ways sit faded on the map to tap. The choice is shared with the Today card.
 - **Walk it in the app.** "Start walk" steps through the route Lumen picked (turn onto which street, how far, how shady, which side of the street to keep to), with the map following each step, then the stop and the walk back. It stays on the shady / calm route instead of handing off to a maps app that would re-route the shortest way. There's no GPS: you tap Next as you go.
-- **Also in Ask Lumen.** "Coffee on my way from East Richmond at 8:30am, 15 min?" or "Shady spot to sit for 30 min at 12:30pm?" go through the same engine (`find_nearby` tool, with a rule-based fallback). "Show on map" draws the walk in the Console; on the phone, "Open in Walk" lets you follow it.
+- **Also in Ask Lumen.** "Coffee on my way from East Richmond at 8:30am, 15 min?", "Shady spot to sit for 30 min at 12:30pm?", "Any gyms near me after work?" or "A bookshop in 40 min?" go through the same engine (`find_nearby` tool, with a rule-based fallback). "Show on map" draws the walk in the Console; on the phone, "Open in Walk" lets you follow it.
 
 ### How the phone app works
 
@@ -197,10 +200,11 @@ Mia is a fictional commuter.
 
 | Real / measured | Modelled / estimated | Synthetic (labelled in the UI) |
 | --- | --- | --- |
-| OSM building footprints, path network, stations | Missing building heights: levels × 3.5 m, otherwise a default by building type | Readings for all 13 "replayed" window nodes are generated by the crowd model (no node is deployed yet) |
+| OSM building footprints, path network, stations, shops and fitness places (Lumen Local) | Missing building heights: levels × 3.5 m, otherwise a default by building type | Readings for all 13 "replayed" window nodes are generated by the crowd model (no node is deployed yet) |
 | City of Yarra street trees (with trunk diameter) | Canopy radius estimated from trunk diameter; growth curve for new trees (full canopy at 15 years) | Split of 10,000 workers across stations |
 | Sun position (NOAA algorithm) | Footpath widths by street class, hand-corrected on main roads | Static approximation of train headways (GTFS-R integration pending) |
 | Locations of Yarra's 6 smart poles (council project page, geocoded by address) | LOS: peak-minute flow ÷ effective width | Hot-day temperature curve |
+| Places in `data/raw/local_extra.json`: hand-added from public listings, for real places OSM is missing (empty until the team verifies some; nothing is invented) | Opening hours where OSM has none (typical for the kind of place, labelled "Hours not listed"); class length ~45 min | |
 | | All what-if results; cost ranges (planning references, not quotes) | Merchants' "same day last week" comparison (replayed data) |
 | | Comfort Score weights | SMS conversations (simulated on the phone, never sent) |
 
@@ -219,7 +223,10 @@ backend/server.py        FastAPI: API + static frontend + SSE live stream
 backend/lumen/           geo / sun / precinct / shade / crowd / router / engine / evaluate / brief / live
                          whatif (scenario overlay, before/after, cost, saving)
                          personal (phone home screens and recommendations per role) · sms (simulated SMS channel)
-                         nearby (places that fit a time budget: POIs, opening hours, rest-spot shade)
+                         nearby (places that fit a time budget: POIs, opening hours, rest-spot shade, Lumen Local)
+data/raw/local_extra.json  Hand-added Lumen Local places OSM is missing (verified real ones only), e.g.
+                         {"name", "kind": "shop"|"fitness", "tag": "florist"|"boxing", "lat", "lon",
+                          "address", "opening_hours", "blurb", "website", "source": "Google Maps, checked <date>"}
 data/whatif/             Saved scenarios (not committed)
 node/window_node.py      Window Node demo
 frontend/                Vite + React + MapLibre GL; / is the Console, /m is the phone PWA (src/mobile/)
@@ -232,7 +239,7 @@ frontend/                Vite + React + MapLibre GL; / is the Console, /m is the
 
 **What-if:** `POST /api/whatif/compare` (`{items, years, scenario, t}` → scenario key + before/after; afterwards `/api/state` and `/api/route` accept `&plan=<key>`) · `GET/POST /api/whatif/plans` · `DELETE /api/whatif/plans/{id}` · `GET /api/whatif/side-by-side?ids=` · `GET /api/whatif/export.csv?ids=` (`POST` exports an unsaved draft)
 
-**Phone app:** `GET /api/me/commuter?stop=&office=&arrive=09:00` · `GET /api/me/driver?streets=Swan Street,Cremorne Street` · `GET /api/me/merchant?node=node-03&open=07:00&close=16:00` · `GET /api/me/council` · `POST /api/sms` (`{session, text}`, simulated SMS gateway) · `GET /api/nearby?want=coffee&budget=15&from=<office id>&t=750` (add `&shape=via&to=<id>` for a stop on the way; `want` is one of the keys in `/api/meta` → `nearby`)
+**Phone app:** `GET /api/me/commuter?stop=&office=&arrive=09:00` · `GET /api/me/driver?streets=Swan Street,Cremorne Street` · `GET /api/me/merchant?node=node-03&open=07:00&close=16:00` · `GET /api/me/council` · `POST /api/sms` (`{session, text}`, simulated SMS gateway) · `GET /api/nearby?want=coffee&budget=15&from=<office id>&t=750` (add `&shape=via&to=<id>` for a stop on the way; `want` is one of the keys in `/api/meta` → `nearby`, including `local` and `fitness`; `&focus=<place id>` keeps that place in the results or says why it doesn't fit) · `GET /api/layers/local` (Lumen Local places as GeoJSON). `/api/me/commuter` cards carry `on_the_way`.
 
 </details>
 
