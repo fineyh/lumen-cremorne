@@ -22,7 +22,6 @@ export type Settings = {
   node: string;
   open: string;
   close: string;
-  channel: "web" | "sms";
   /** plan every walk step-free (wheelchair, pram, walking frame) */
   stepFree?: boolean;
 };
@@ -82,7 +81,7 @@ export default function MobileApp() {
   const save = (s: Settings | null) => {
     storeSettings(s);
     setSettings(s);
-    setView(s?.channel === "sms" ? "sms" : "home");
+    setView("home");
   };
   // flipped from any walk screen: remembered with the rest of the settings, without leaving the screen
   const setStepFree = (on: boolean) => {

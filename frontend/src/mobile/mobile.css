@@ -258,10 +258,6 @@ button:disabled { opacity: 0.45; cursor: default; }
 .ob-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ob-chips button { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line-2); background: #fff; border-radius: 99px; padding: 7px 12px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .ob-chips button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-.ob-channel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.ob-channel button { display: grid; justify-items: start; gap: 2px; text-align: left; border: 1px solid var(--line-2); background: #fff; border-radius: 16px; padding: 12px; }
-.ob-channel button small { color: var(--ink-3); font-size: 12px; }
-.ob-channel button.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
 
 /* ------------------------------------------------------------------ SMS simulator */
 .sms { display: flex; flex-direction: column; min-height: 100%; background: #fff; margin: -4px -16px -20px; }

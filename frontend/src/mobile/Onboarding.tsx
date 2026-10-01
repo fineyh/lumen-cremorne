@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Briefcase, Building2, Check, Lock, MessageSquare, Store, Truck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Briefcase, Building2, Check, Lock, Store, Truck } from "lucide-react";
 import type { Meta, Role } from "../api";
 import { StepFreeSwitch, StopNotes } from "./access";
 import type { Settings } from "./MobileApp";
@@ -19,7 +19,7 @@ export default function Onboarding({ meta, initial, presetRole, onDone, onReset 
   const [s, setS] = useState<Settings>(
     initial ?? {
       role: presetRole ?? "commuter", stop: "train-richmond", office: dover, arrive: "09:00",
-      streets: ["Swan Street", "Cremorne Street"], node: "node-03", open: "07:00", close: "16:00", channel: "web",
+      streets: ["Swan Street", "Cremorne Street"], node: "node-03", open: "07:00", close: "16:00",
     },
   );
   const [step, setStep] = useState(initial || presetRole ? 1 : 0);
@@ -82,11 +82,6 @@ export default function Onboarding({ meta, initial, presetRole, onDone, onReset 
                 </button>
               );
             })}
-          </div>
-          <span className="ob-lbl">How should we reach you?</span>
-          <div className="ob-channel">
-            <button className={s.channel === "web" ? "on" : ""} onClick={() => set("channel", "web")}><Truck size={16} /><b>This page</b><small>check before your run</small></button>
-            <button className={s.channel === "sms" ? "on" : ""} onClick={() => set("channel", "sms")}><MessageSquare size={16} /><b>Text me</b><small>one SMS at 6:30am</small></button>
           </div>
         </div>
       )}
