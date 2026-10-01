@@ -149,6 +149,13 @@ export type Walk = {
   vs_shortest: { sun_saved: number; crowd_saved: number; extra_min: number };
   lines: string[];
   step_free_vs: StepFreeVs | null;
+  /** Lumen Local: an independent shop, gym or park right beside this route */
+  on_the_way?: OnTheWay[];
+};
+export type OnTheWay = {
+  id: string; name: string; type_label: string; category: "local" | "fitness" | "rest"; lon: number; lat: number;
+  off_m: number; off_min: number; on_route: boolean; blurb: string | null;
+  hours: { state: "open" | "assumed_open" | "always" | "closed"; text: string | null; opens: number | null; assumed?: boolean };
 };
 export type CommuterHome = {
   role: "commuter";
@@ -167,6 +174,7 @@ export type NearbyCat = { key: string; label: string; kind: "errand" | "stay"; c
 export type NearbyChip = { k: "open" | "unknown" | "shade" | "sun" | "seat" | "warn" | "queue" | "quiet" | "busy"; t: string };
 export type NearbyPlace = {
   id: string; name: string; named: boolean; tag: string; type: string; address: string; lon: number; lat: number;
+  blurb?: string | null; website?: string | null;
   mode: Route["mode"]; route_label: string;
   walk_out: number; walk_back: number; walk: number; dwell: number; total: number; spare: number; detour: number | null;
   arrive_at: string; leave_at: string; back_at: string;
@@ -192,6 +200,9 @@ export type NearbyResponse = {
   /** not_step_free: places only reachable past steps or a raised kerb (step-free searches only) */
   counts: { places: number; closed: number; too_far: number; fit: number; not_step_free: number }; need_min: number | null;
   results: NearbyPlace[]; note: string;
+  /** the place opened from "On your way": whether it made the list, and if not why */
+  focus?: { id: string; name: string; fits: boolean; reason?: "closed" | "too_far" | "not_step_free" | "elsewhere";
+    need_min?: number; hours?: { text: string | null; opens: number | null } } | null;
 };
 
 export type StreetDay = {

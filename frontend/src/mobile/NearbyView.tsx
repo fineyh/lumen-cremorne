@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Armchair, Banknote, Briefcase, Clock, Coffee, Croissant, Droplet, Footprints, Hourglass, LogIn, LogOut, Minus, MoonStar,
-  Navigation2, Pill, Plus, RotateCcw, ShoppingBasket, Sun, Toilet, TrainFront, TreeDeciduous, Trees, Users, UtensilsCrossed, type LucideIcon,
+  Armchair, Banknote, Briefcase, Clock, Coffee, Croissant, Droplet, Dumbbell, ExternalLink, Footprints, Hourglass, LogIn, LogOut, MapPinned, Minus,
+  MoonStar, Navigation2, Pill, Plus, RotateCcw, ShoppingBasket, Store, Sun, Toilet, TrainFront, TreeDeciduous, Trees, Users, UtensilsCrossed,
+  type LucideIcon,
 } from "lucide-react";
 import { fmtTime, get, MODE_COLORS, type Meta, type NearbyChip, type NearbyPlace, type NearbyResponse, type NearbyWalk, type Route } from "../api";
 import { AccessNote, barrierMarks, StepFreeSwitch } from "./access";
@@ -12,14 +13,17 @@ import WalkView from "./WalkView";
 import { loadPref, PREFS, savePref, type Pref } from "./routePref";
 
 export type Trip = "back" | "in" | "home";
-export type NearbyPreset = { want: string; budget?: number; trip?: Trip; t?: number };
+/** focus: a place to pick out of the results (opened from "On your way" on the Today card) */
+export type NearbyPreset = { want: string; budget?: number; trip?: Trip; t?: number; focus?: string };
 
-// budget = the starting time budget when you pick the category
-export const CATS: Record<string, { icon: LucideIcon; color: string; short: string; budget: number }> = {
+// budget = the starting time budget when you pick the category; trip = the trip it usually is
+export const CATS: Record<string, { icon: LucideIcon; color: string; short: string; budget: number; trip?: Trip; indie?: boolean }> = {
   coffee: { icon: Coffee, color: "#b45309", short: "Coffee", budget: 15 },
   bite: { icon: Croissant, color: "#ea580c", short: "Quick bite", budget: 15 },
   lunch: { icon: UtensilsCrossed, color: "#db2777", short: "Lunch", budget: 45 },
   rest: { icon: Trees, color: "#0d9488", short: "Shady rest", budget: 20 },
+  local: { icon: Store, color: "#c026d3", short: "Local shops", budget: 20, indie: true },
+  fitness: { icon: Dumbbell, color: "#4f46e5", short: "Gym & class", budget: 90, trip: "home", indie: true },
   groceries: { icon: ShoppingBasket, color: "#7c3aed", short: "Groceries", budget: 15 },
   pharmacy: { icon: Pill, color: "#e11d48", short: "Pharmacy", budget: 20 },
   cash: { icon: Banknote, color: "#059669", short: "Cash", budget: 15 },
@@ -42,6 +46,13 @@ const toMin = (v: string) => {
   return h * 60 + (m || 0);
 };
 const hhmm = (t: number) => `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+const host = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "Website";
+  }
+};
 const n1 = (x: number) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));
 
 function defaultTime(trip: Trip, s: Settings) {
@@ -78,6 +89,7 @@ export default function NearbyView({ meta, s, scenario, preset, onStepFree }: {
   const [err, setErr] = useState(false);
   const [tick, setTick] = useState(0);
   const [sel, setSel] = useState(0);
+  const [focus, setFocus] = useState(preset?.focus);
   const [walk, setWalk] = useState<{ data: NearbyResponse; place: NearbyPlace; trip: Trip } | null>(null);
   const req = useRef(0);
   const stepFree = !!s.stepFree;
@@ -88,6 +100,7 @@ export default function NearbyView({ meta, s, scenario, preset, onStepFree }: {
     setBudget(preset.budget ?? CATS[preset.want].budget);
     if (preset.trip) setTrip(preset.trip);
     setT(preset.t ?? defaultTime(preset.trip ?? trip, s));
+    setFocus(preset.focus);
     setWalk(null);
   }, [preset]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -99,6 +112,7 @@ export default function NearbyView({ meta, s, scenario, preset, onStepFree }: {
     setErr(false);
     const q = new URLSearchParams({ want, budget: String(budget), t: String(t), scenario });
     if (stepFree) q.set("step_free", "true");
+    if (focus) q.set("focus", focus);
     if (trip === "back") q.set("from", s.office);
     else {
       q.set("shape", "via");
@@ -111,13 +125,13 @@ export default function NearbyView({ meta, s, scenario, preset, onStepFree }: {
         .then((d) => {
           if (id !== req.current) return;
           setData(d);
-          setSel(0);
+          setSel(Math.max(0, focus ? d.results.findIndex((r) => r.id === focus) : 0));
         })
         .catch(() => id === req.current && setErr(true))
         .finally(() => id === req.current && setBusy(false));
     }, 160);
     return () => clearTimeout(timer);
-  }, [want, budget, trip, t, scenario, s.office, s.stop, stepFree, tick]);
+  }, [want, budget, trip, t, scenario, s.office, s.stop, stepFree, tick, focus]);
 
   const cat = CATS[want];
   const counts = Object.fromEntries(meta.nearby?.map((c) => [c.key, c.count]) ?? []);
@@ -132,6 +146,9 @@ export default function NearbyView({ meta, s, scenario, preset, onStepFree }: {
   const pickWant = (k: string) => {
     setWant(k);
     setBudget(CATS[k].budget);
+    setFocus(undefined);
+    const tr = CATS[k].trip;
+    if (tr && tr !== trip) pickTrip(tr);
   };
   // keep the chosen category in view when it arrives from a shortcut
   const onTile = (el: HTMLButtonElement | null) => {
@@ -197,15 +214,42 @@ export default function NearbyView({ meta, s, scenario, preset, onStepFree }: {
       {err && <Offline onRetry={() => setTick(tick + 1)} />}
       {!err && !data && <div className="sk sk-card" />}
       {!err && data && (
-        <Results data={data} sel={Math.min(sel, Math.max(0, data.results.length - 1))} setSel={setSel} busy={busy} trip={trip}
-          onBudget={setBudget} onTime={setT} onWalk={(place) => setWalk({ data, place, trip })} onStepFree={onStepFree} />
+        <>
+          {data.focus && !data.focus.fits && <FocusNote f={data.focus} budget={data.budget} onBudget={setBudget} onTime={setT} onClear={() => setFocus(undefined)} />}
+          <Results data={data} sel={Math.min(sel, Math.max(0, data.results.length - 1))} setSel={setSel} busy={busy} trip={trip}
+            focus={data.focus?.fits ? data.focus.id : undefined}
+            onBudget={setBudget} onTime={setT} onWalk={(place) => setWalk({ data, place, trip })} onStepFree={onStepFree} />
+        </>
       )}
     </div>
   );
 }
 
-function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk, onStepFree }: {
-  data: NearbyResponse; sel: number; setSel: (i: number) => void; busy: boolean; trip: Trip;
+/** The place you tapped on the Today card didn't make this list: say why, and offer the one change that fixes it. */
+function FocusNote({ f, budget, onBudget, onTime, onClear }: {
+  f: NonNullable<NearbyResponse["focus"]>; budget: number; onBudget: (b: number) => void; onTime: (t: number) => void; onClear: () => void;
+}) {
+  const fix = f.reason === "too_far" && f.need_min
+    ? { text: `needs about ${f.need_min} min, more than ${budget}`, btn: `Make it ${STEPS.find((x) => x >= f.need_min!) ?? f.need_min} min`,
+      go: () => onBudget(STEPS.find((x) => x >= f.need_min!) ?? f.need_min!) }
+    : f.reason === "closed"
+      ? { text: f.hours?.text?.toLowerCase() ?? "is closed then", btn: f.hours?.opens != null ? `Try ${fmtTime(f.hours.opens)}` : null,
+        go: () => f.hours?.opens != null && onTime(f.hours.opens) }
+      : f.reason === "not_step_free"
+        ? { text: "is only reachable past steps or a raised kerb", btn: null, go: () => {} }
+        : { text: "isn't on this trip", btn: null, go: () => {} };
+  return (
+    <section className="nb-focus" role="status">
+      <span className="nb-focus-ic"><MapPinned size={16} /></span>
+      <p><b>{f.name}</b> {fix.text}.</p>
+      {fix.btn ? <button className="m-btn primary" onClick={fix.go}>{fix.btn}</button>
+        : <button className="m-btn" onClick={onClear}>Show the best</button>}
+    </section>
+  );
+}
+
+function Results({ data, sel, setSel, busy, trip, focus, onBudget, onTime, onWalk, onStepFree }: {
+  data: NearbyResponse; sel: number; setSel: (i: number) => void; busy: boolean; trip: Trip; focus?: string;
   onBudget: (b: number) => void; onTime: (t: number) => void; onWalk: (p: NearbyPlace) => void; onStepFree: (on: boolean) => void;
 }) {
   const cat = CATS[data.want];
@@ -313,8 +357,19 @@ function Results({ data, sel, setSel, busy, trip, onBudget, onTime, onWalk, onSt
             <b>{best.name}</b>
             <small>{best.type} · {best.address}</small>
           </div>
-          {sel === 0 && <span className="nb-badge">Best pick</span>}
+          {best.id === focus ? <span className="nb-badge">On your way</span> : sel === 0 && <span className="nb-badge">Best pick</span>}
         </div>
+        {(cat.indie || best.blurb || best.website) && (
+          <div className="nb-local">
+            {cat.indie && <span className="nb-indie">Independent</span>}
+            {best.blurb && <p>{best.blurb}</p>}
+            {best.website && (
+              <a href={best.website} target="_blank" rel="noreferrer noopener">
+                {host(best.website)} <ExternalLink size={11} />
+              </a>
+            )}
+          </div>
+        )}
 
         <div className="nb-hl">
           <div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Clock, Compass, Footprints, MapPin, Navigation2, RotateCw, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock, WifiOff } from "lucide-react";
-import { get, LOS, LOS_COLORS, MODE_COLORS, type CommuterHome as Home, type Meta, type Route, type StepFreeVs } from "../api";
+import { ChevronDown, ChevronRight, Clock, Compass, Footprints, MapPin, Navigation2, RotateCw, Sun, Thermometer, TreeDeciduous, Users, Utensils, CalendarClock, WifiOff } from "lucide-react";
+import { fmtTime, get, LOS, LOS_COLORS, MODE_COLORS, type CommuterHome as Home, type Meta, type OnTheWay, type Route, type StepFreeVs } from "../api";
 import { AccessNote, barrierMarks, barrierText, StepFreeSwitch, StopNotes } from "./access";
 import MiniMap from "./MiniMap";
 import RouteWalk from "./RouteWalk";
@@ -13,7 +13,10 @@ const POP: (NearbyPreset & { label: string })[] = [
   { want: "coffee", budget: 20, trip: "in", label: "Coffee on the way" },
   { want: "bite", budget: 15, trip: "back", t: 750, label: "Quick bite" },
   { want: "rest", budget: 20, trip: "back", t: 750, label: "Shady break" },
+  { want: "local", budget: 20, trip: "back", t: 750, label: "Browse local" },
+  { want: "fitness", budget: 90, trip: "home", label: "After-work class" },
 ];
+const STEPS = [5, 10, 15, 20, 25, 30, 45, 60, 90];
 
 type MeetingData = { to: string; to_id: string; time: string; temp_c: number; heat_matters: boolean; route: Route; shortest: Route; step_free_vs: StepFreeVs | null };
 
@@ -120,7 +123,7 @@ export default function CommuterHome({ meta, s, scenario, onNearby, onStepFree }
               ? <>It's mild today, so shade barely matters. Tap a faded line to compare.</>
               : <>Tap a faded line on the map to compare.</>}
         </p>
-        <MiniMap lines={mapLines} marks={barrierMarks(r.access.barriers)} onPick={(i) => setPref(groups[i].modes.includes(r.mode) ? pref : groups[i].modes[0])} />
+        <MiniMap lines={mapLines} marks={[...barrierMarks(r.access.barriers), ...owMarks(w.on_the_way ?? [], onNearby, r.minutes, w.leave_minutes)]} onPick={(i) => setPref(groups[i].modes.includes(r.mode) ? pref : groups[i].modes[0])} />
         <AccessNote access={r.access} vs={w.step_free_vs} stepFree={home.step_free} onStepFree={onStepFree} />
         <div className="route-sum" key={pref}>
           <div><b>{r.minutes.toFixed(1)}</b><small>min walk</small></div>
@@ -128,6 +131,7 @@ export default function CommuterHome({ meta, s, scenario, onNearby, onStepFree }
           <div><b>{r.shaded_pct}%</b><small>shaded</small></div>
           <div><b>{r.comfort}</b><small>comfort</small></div>
         </div>
+        <OnYourWay places={w.on_the_way ?? []} walkMin={r.minutes} leave={w.leave_minutes} onNearby={onNearby} key={`ow-${pref}`} />
         <ul className="m-lines">
           {lines.map((l, i) => <li key={i}>{l}</li>)}
         </ul>
@@ -199,6 +203,63 @@ export default function CommuterHome({ meta, s, scenario, onNearby, onStepFree }
         Numbers come from Lumen's shade and crowd models. Text written by {t.engine === "template" ? "a fixed template" : "a local model that can't change any number"}.
         Your stop and building are sent with this request only and never stored.
       </p>
+    </div>
+  );
+}
+
+/** Where tapping an "On your way" place goes: Nearby, on the trip it fits best, with that place picked out. */
+function owPreset(p: OnTheWay, walkMin: number, leave: number): NearbyPreset {
+  if (p.category === "fitness") return { want: "fitness", budget: 90, trip: "home", focus: p.id };
+  if (p.category === "rest") return { want: "rest", budget: 20, trip: "back", t: 750, focus: p.id };
+  // open as you pass: stop on the way in. Otherwise it's a lunchtime wander from the desk.
+  if (p.hours.state === "open" || p.hours.state === "assumed_open") {
+    const need = walkMin + p.off_min + 10;
+    return { want: "local", budget: STEPS.find((x) => x >= need) ?? 60, trip: "in", t: leave, focus: p.id };
+  }
+  return { want: "local", budget: 30, trip: "back", t: 750, focus: p.id };
+}
+
+function owWhen(p: OnTheWay) {
+  if (p.category === "rest") return p.on_route ? "your walk goes through it" : null;
+  if (p.hours.state === "closed") return p.hours.opens != null ? `opens ${fmtTime(p.hours.opens)}` : "closed today";
+  if (p.hours.state === "assumed_open") return "usually open now";
+  return p.hours.text ? p.hours.text.replace(/^Open/, "open") : null;
+}
+
+function owMarks(places: OnTheWay[], onNearby: (p: NearbyPreset) => void, walkMin: number, leave: number) {
+  return places.map((p) => {
+    const c = CATS[p.category];
+    const Icon = c.icon;
+    return { coord: [p.lon, p.lat] as [number, number], label: "", cls: "local", color: c.color, title: p.name,
+      icon: <Icon size={12} strokeWidth={2.6} />, onClick: () => onNearby(owPreset(p, walkMin, leave)) };
+  });
+}
+
+/** Lumen Local on the Today card: one or two independent places, or a park, right beside the walk. */
+function OnYourWay({ places, walkMin, leave, onNearby }: {
+  places: OnTheWay[]; walkMin: number; leave: number; onNearby: (p: NearbyPreset) => void;
+}) {
+  if (!places.length) return null;
+  return (
+    <div className="ow">
+      <div className="ow-h"><span>On your way</span><small>Cremorne's own, right beside this walk</small></div>
+      {places.map((p, i) => {
+        const c = CATS[p.category];
+        const Icon = c.icon;
+        const off = p.on_route ? "right on your route" : p.off_min < 1 ? `${p.off_m} m off route` : `${p.off_min.toFixed(1).replace(/\.0$/, "")} min off route`;
+        const when = owWhen(p);
+        return (
+          <button key={p.id} className="ow-row" style={{ ["--cc" as string]: c.color, animationDelay: `${i * 70}ms` }}
+            onClick={() => onNearby(owPreset(p, walkMin, leave))}>
+            <span className="ow-ic"><Icon size={17} /></span>
+            <span className="ow-main">
+              <b>{p.name}</b>
+              <small>{p.type_label} · {off}{when && <> · <em className={p.hours.state === "closed" ? "later" : ""}>{when}</em></>}</small>
+            </span>
+            <ChevronRight size={17} className="ow-go" />
+          </button>
+        );
+      })}
     </div>
   );
 }
