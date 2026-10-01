@@ -447,6 +447,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .pp-delta.down { background: var(--bad-bg); color: var(--bad); }
 .pp-note { margin-top: 5px; font-size: 11px; color: #4338ca; font-weight: 600; }
 .pp-note.warn { color: #b45309; }
+.pp-note.local { color: #a21caf; }
 .ac-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 .ac-chip { font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 99px; background: var(--sunken); color: var(--ink-2); }
 
@@ -505,6 +506,10 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .legend.acc { flex-wrap: wrap; gap: 4px 11px; }
 .legend.acc span { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-2); }
 .legend.acc small { flex-basis: 100%; color: var(--ink-4); font-size: 10.5px; }
+.legend.local { flex-wrap: wrap; gap: 4px 12px; }
+.legend.local span { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-2); }
+.legend.local i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(11, 19, 36, 0.15); }
+.legend.local small { flex-basis: 100%; color: var(--ink-4); font-size: 10.5px; }
 
 /* ==================================================================== phone modal */
 .modal-bg { position: fixed; inset: 0; background: rgba(11, 19, 36, 0.45); backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 50; animation: fade 0.2s; }

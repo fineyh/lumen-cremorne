@@ -4,7 +4,7 @@ import {
   ShieldCheck, Smartphone, Sprout, X,
 } from "lucide-react";
 import QRCode from "qrcode";
-import MapView, { type EditClick, type LayerToggles } from "./MapView";
+import MapView, { LOCAL_COLORS, type EditClick, type LayerToggles } from "./MapView";
 import TimeBar from "./TimeBar";
 import { ACCESS_LEGEND, badgeUrl } from "./accessIcons";
 import RoutePanel from "./panels/RoutePanel";
@@ -42,7 +42,7 @@ export default function App() {
   const [routes, setRoutes] = useState<RouteResponse | null>(null);
   const [selectedMode, setSelectedMode] = useState("coolest");
   const [pickMode, setPickMode] = useState<"from" | "to" | null>(null);
-  const [toggles, setToggles] = useState<LayerToggles>({ shadows: true, trees: true, network: "shade", buildings3d: false, nodes: true, poles: true, stops: true, access: true });
+  const [toggles, setToggles] = useState<LayerToggles>({ shadows: true, trees: true, network: "shade", buildings3d: false, nodes: true, poles: true, stops: true, access: true, local: false });
   const [stepFree, setStepFreeRaw] = useState(() => {
     try {
       return localStorage.getItem("lumen.console.stepFree") === "1";
@@ -358,9 +358,10 @@ export default function App() {
 
 function LayerBar({ toggles, setToggles }: { toggles: LayerToggles; setToggles: (t: LayerToggles) => void }) {
   const set = (k: keyof LayerToggles, v: LayerToggles[keyof LayerToggles]) => setToggles({ ...toggles, [k]: v });
-  const chips: { k: "shadows" | "trees" | "nodes" | "poles" | "stops" | "access" | "buildings3d"; label: string }[] = [
+  const chips: { k: "shadows" | "trees" | "nodes" | "poles" | "stops" | "access" | "local" | "buildings3d"; label: string }[] = [
     { k: "shadows", label: "Shadows" }, { k: "trees", label: "Canopy" }, { k: "nodes", label: "Nodes" },
-    { k: "poles", label: "Poles" }, { k: "stops", label: "Stops" }, { k: "access", label: "Access" }, { k: "buildings3d", label: "3D" },
+    { k: "poles", label: "Poles" }, { k: "stops", label: "Stops" }, { k: "access", label: "Access" }, { k: "local", label: "Local" },
+    { k: "buildings3d", label: "3D" },
   ];
   return (
     <div className="layerbar glass">
@@ -381,6 +382,13 @@ function LayerBar({ toggles, setToggles }: { toggles: LayerToggles; setToggles: 
       </div>
       <Legend mode={toggles.network} />
       {toggles.access && <AccessLegend />}
+      {toggles.local && (
+        <div className="legend local">
+          <span><i style={{ background: LOCAL_COLORS.local }} />Independent shops</span>
+          <span><i style={{ background: LOCAL_COLORS.fitness }} />Gyms &amp; classes</span>
+          <small>Lumen Local · chains left out · hover a pin</small>
+        </div>
+      )}
     </div>
   );
 }

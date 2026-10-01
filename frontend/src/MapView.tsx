@@ -14,6 +14,7 @@ export type LayerToggles = {
   poles: boolean;
   stops: boolean;
   access: boolean;
+  local: boolean;
 };
 
 export type EditClick = { lngLat: [number, number]; treeIndex?: number; itemIndex?: number };
@@ -127,6 +128,7 @@ export default function MapView(p: Props) {
         // optional layers: an older backend without them still gets a working map
         get<GeoJSON.FeatureCollection>("/api/layers/transit").catch(() => EMPTY),
         get<GeoJSON.FeatureCollection>("/api/layers/access").catch(() => EMPTY),
+        get<GeoJSON.FeatureCollection>("/api/layers/local").catch(() => EMPTY),
       ]);
       const style = await loadStyle();
       if (cancelled || !el.current) return;
@@ -149,7 +151,7 @@ export default function MapView(p: Props) {
         for (const l of map.getStyle().layers ?? []) {
           if (l.id.includes("building")) map.setLayoutProperty(l.id, "visibility", "none");
         }
-        const [network, buildings, trees, transit, accessFc] = await layers;
+        const [network, buildings, trees, transit, accessFc, localFc] = await layers;
         const badges = await Promise.all(Object.keys(ACCESS_BADGES).map(async (k) => [k, await loadBadge(k)] as const));
         if (cancelled) return;
         for (const [k, img] of badges) map.addImage(`acc-${k}`, img, { pixelRatio: 2 });
@@ -164,6 +166,7 @@ export default function MapView(p: Props) {
         map.addSource("nodes", { type: "geojson", data: EMPTY });
         map.addSource("overlay", { type: "geojson", data: EMPTY });
         map.addSource("access", { type: "geojson", data: accessFc });
+        map.addSource("local", { type: "geojson", data: localFc });
 
         map.addLayer({ id: "shadows", type: "fill", source: "shadows", paint: { "fill-color": "#15294a", "fill-opacity": 0.3 } });
         map.addLayer({ id: "wi-shadows", type: "fill", source: "wi-shadows", paint: { "fill-color": "#065f46", "fill-opacity": 0.38 } });
@@ -232,6 +235,25 @@ export default function MapView(p: Props) {
         map.addLayer({
           id: "wi-removed", type: "circle", source: "overlay", filter: ["==", ["get", "kind"], "remove_tree"],
           paint: { "circle-radius": metres(["get", "r"], 6), "circle-color": "rgba(225,29,72,0.15)", "circle-stroke-color": "#e11d48", "circle-stroke-width": 2 },
+        });
+        // Lumen Local: independent shops and gyms, under the routes so a walk stays readable on top
+        map.addLayer({
+          id: "local-pins", type: "circle", source: "local",
+          paint: {
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 3.5, 16, 6, 18, 9],
+            "circle-color": ["match", ["get", "category"], "fitness", LOCAL_COLORS.fitness, LOCAL_COLORS.local],
+            "circle-stroke-color": "#ffffff", "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 14, 1.2, 17, 2.5],
+          },
+        });
+        map.on("mousemove", "local-pins", (e) => {
+          const f = e.features?.[0];
+          if (!f || propsRef.current.editTool) return;
+          map.getCanvas().style.cursor = propsRef.current.pickMode ? "crosshair" : "help";
+          popup.setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number]).setHTML(localHtml(f.properties)).addTo(map);
+        });
+        map.on("mouseleave", "local-pins", () => {
+          map.getCanvas().style.cursor = cursorFor();
+          popup.remove();
         });
         map.addLayer({
           id: "routes-casing", type: "line", source: "routes",
@@ -353,7 +375,7 @@ export default function MapView(p: Props) {
           const st = propsRef.current.state;
           if (!f || !st || propsRef.current.editTool) return;
           // an access icon on top of the footpath wins
-          if (map.queryRenderedFeatures(e.point, { layers: tiers.map((t) => t[0]).filter((id) => map.getLayoutProperty(id, "visibility") !== "none") }).length) return;
+          if (map.queryRenderedFeatures(e.point, { layers: [...tiers.map((t) => t[0]), "local-pins"].filter((id) => map.getLayoutProperty(id, "visibility") !== "none") }).length) return;
           map.getCanvas().style.cursor = propsRef.current.pickMode ? "crosshair" : "pointer";
           const i = f.properties.id as number;
           const los = st.edges.los[i];
@@ -456,6 +478,7 @@ export default function MapView(p: Props) {
     for (const d of poleEls.current) d.style.display = t.poles ? "" : "none";
     for (const d of stopEls.current) d.style.display = t.stops ? "" : "none";
     for (const id of ["access-steps", "access-minor", "access-mid", "access-major"]) vis(id, t.access);
+    vis("local-pins", t.local);
     // tram stop badges show level access only while the access layer is on
     el.current?.classList.toggle("show-access", t.access);
   }
@@ -629,6 +652,16 @@ export default function MapView(p: Props) {
   }, [p.pickMode, p.editTool]);
 
   return <div ref={el} className="map" />;
+}
+
+// ------------------------------------------------------------------ Lumen Local
+export const LOCAL_COLORS = { local: "#c026d3", fitness: "#4f46e5" };
+
+function localHtml(p: Record<string, unknown>): string {
+  const fit = p.category === "fitness";
+  return `<b>${esc(String(p.name))}</b><div class="pp-row"><span>${esc(String(p.type_label))}</span>` +
+    `<span style="color:${fit ? LOCAL_COLORS.fitness : LOCAL_COLORS.local};font-weight:600">${fit ? "Gym & classes" : "Local shop"}</span></div>` +
+    `<div class="pp-note local">Lumen Local · independent · ${p.source === "hand" ? "hand-added from public listings" : "OpenStreetMap"}</div>`;
 }
 
 // ------------------------------------------------------------------ stops and access features
