@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- Source of pitch-media/arch.png: python arch.py screenshots this at 1500x400, 2x. -->
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0}
+  body{width:1500px;height:400px;background:#fff;font-family:Inter,system-ui,sans-serif;color:#0b1324;
+    display:flex;align-items:center;gap:0;padding:18px 14px}
+  .card{flex:1;height:362px;border:1px solid #e6e8ee;border-radius:24px;padding:26px 24px 0;display:flex;flex-direction:column;
+    box-shadow:0 6px 18px rgba(11,19,36,.06)}
+  .k{font-size:14px;font-weight:800;letter-spacing:.16em}
+  .s .k{color:#ea580c}.u .k{color:#0d9488}.a .k{color:#7c3aed}
+  h2{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:10px 0 14px}
+  ul{list-style:none;padding:0;flex:1}
+  li{position:relative;padding-left:18px;font-size:15.5px;line-height:1.42;margin-bottom:9px;color:#1f2937}
+  li::before{content:"";position:absolute;left:0;top:8px;width:8px;height:8px;border-radius:50%}
+  .s li::before{background:#f97316}.u li::before{background:#14b8a6}.a li::before{background:#8b5cf6}
+  b{font-weight:700;color:#0b1324}
+  .f{border-top:1px dashed #d8dce4;padding:11px 0 16px;font-size:13px;color:#6b7280}
+  .arr{width:44px;flex:none;display:flex;justify-content:center}
+</style></head><body>
+  <div class="card s">
+    <div class="k">1 · SENSE</div>
+    <h2>Counts, never faces</h2>
+    <ul>
+      <li><b>Window Node</b>: webcam + YOLOv8n/ByteTrack → numbers only</li>
+      <li><b>Open data</b>: 2,835 OSM buildings · 2,180 Yarra trees · 153 km paths · stops · kerb ramps, crossings &amp; steps · shops</li>
+      <li>HTTP / MQTT every 10 s. Payload with an image field → <b>HTTP 422</b></li>
+    </ul>
+    <div class="f">Production: ESP32-S3 + 24 GHz mmWave (no camera)</div>
+  </div>
+  <div class="arr"><svg width="34" height="14" viewBox="0 0 34 14"><path d="M1 7h30M25 1l6 6-6 6" fill="none" stroke="#94a3b8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="card u">
+    <div class="k">2 · UNDERSTAND</div>
+    <h2>Digital twin</h2>
+    <ul>
+      <li><b>Shade model</b>: NOAA sun position + building &amp; canopy shadow sweeps</li>
+      <li><b>Crowd model</b>: train-arrival pulses → Fruin level of service</li>
+      <li><b>Access model</b>: steps, raised kerbs and signalised crossings on every path</li>
+      <li><b>Comfort Score</b> 0–100 per street segment</li>
+    </ul>
+    <div class="f">FastAPI · Shapely · NetworkX · NumPy</div>
+  </div>
+  <div class="arr"><svg width="34" height="14" viewBox="0 0 34 14"><path d="M1 7h30M25 1l6 6-6 6" fill="none" stroke="#94a3b8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="card a">
+    <div class="k">3 · ACT</div>
+    <h2>One precinct, many users</h2>
+    <ul>
+      <li><b>Shade Router</b>: shortest / coolest / least crowded, step-free on request</li>
+      <li><b>Nearby + Lumen Local</b>: places that fit your minutes, independents first</li>
+      <li><b>Brief + Ask Lumen</b> (local LLM) · <b>Phone PWA</b>: commuter · driver (SMS) · café · council</li>
+      <li><b>What-if</b>: trees, sails and closures, before/after per A$</li>
+    </ul>
+    <div class="f">Vite + React + MapLibre GL · Ollama Qwen3.8-27B</div>
+  </div>
+</body></html>

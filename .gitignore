@@ -8,3 +8,5 @@ __pycache__/
 yolov8n.pt
 *.tsbuildinfo
 data/whatif/
+pitch-media/rec/frames/
+pitch-media/rec/build/
